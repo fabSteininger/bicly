@@ -43,6 +43,19 @@ Services:
 - PocketBase: `http://localhost:8090/_/`
 - BRouter: `http://localhost:17777`
 
+Frontend routing env options:
+
+- `VITE_BROUTER_MODE=proxy` (default): use PocketBase hook at `VITE_BROUTER_PROXY`.
+- `VITE_BROUTER_MODE=direct`: call public BRouter directly.
+- `VITE_BROUTER_DIRECT_URL=https://brouter.de/brouter` (default in direct mode).
+
+Example direct-test run:
+
+```bash
+cd frontend
+VITE_BROUTER_MODE=direct npm run dev -- --host 0.0.0.0 --port 5173
+```
+
 ## Notes
 
 1. Create initial users in PocketBase admin UI.

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import WaypointList from './components/WaypointList'
-import { BROUTER_PROXY, loadProfiles, pb } from './lib/api'
+import { buildBrouterRouteUrl, loadProfiles, pb } from './lib/api'
 
 const mapStyle = 'https://tiles.openfreemap.org/styles/liberty'
 
@@ -53,7 +53,7 @@ export default function App() {
     if (waypoints.length < 2) return
 
     const controller = new AbortController()
-    fetch(`${BROUTER_PROXY}?profile=${activeProfile}&points=${encodeURIComponent(brouterPoints)}`, { signal: controller.signal })
+    fetch(buildBrouterRouteUrl({ profile: activeProfile, points: brouterPoints }), { signal: controller.signal })
       .then((r) => r.text())
       .then((text) => setLatestGpx(text))
       .catch(() => {})

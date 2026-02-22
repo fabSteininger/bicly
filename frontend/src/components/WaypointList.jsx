@@ -9,7 +9,10 @@ function SortableWaypoint({ waypoint, onRemove }) {
   return (
     <li ref={setNodeRef} style={style} className="waypoint-item">
       <button className="drag" {...attributes} {...listeners}>⋮⋮</button>
-      <span>{waypoint.label}</span>
+      <div className="waypoint-text">
+        <span>{waypoint.label}</span>
+        <small>{waypoint.lat.toFixed(5)}, {waypoint.lon.toFixed(5)}</small>
+      </div>
       <button onClick={() => onRemove(waypoint.id)}>✕</button>
     </li>
   )

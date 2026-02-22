@@ -1,7 +1,11 @@
 import PocketBase from 'pocketbase'
 
-export const pb = new PocketBase(import.meta.env.VITE_POCKETBASE_URL ?? 'http://localhost:8090')
-export const BROUTER_PROXY = import.meta.env.VITE_BROUTER_PROXY ?? 'http://localhost:8090/api/brouter/route'
+const rawPbUrl = import.meta.env.VITE_POCKETBASE_URL ?? ''
+const normalizedPbUrl = rawPbUrl.replace(/\/+$/, '').replace(/\/api$/, '')
+
+// Keep PocketBase root as same-origin by default so SDK requests go to /api/*
+export const pb = new PocketBase(normalizedPbUrl)
+export const BROUTER_PROXY = import.meta.env.VITE_BROUTER_PROXY ?? '/api/brouter/route'
 export const BROUTER_MODE = import.meta.env.VITE_BROUTER_MODE ?? 'proxy'
 export const BROUTER_DIRECT_URL = import.meta.env.VITE_BROUTER_DIRECT_URL ?? 'https://brouter.de/brouter'
 
@@ -30,9 +34,16 @@ export const register = async (payload) => {
 }
 
 export const loadProfiles = async () => {
-  const rows = await pb.collection('routing_profiles').getFullList({ sort: 'name' })
-  if (!rows.length) {
-    return [{ slug: 'trekking', name: 'Trekking', brouter_profile_id: 'trekking' }]
+  try {
+    const rows = await pb.collection('routing_profiles').getFullList({ sort: 'name' })
+    if (rows.length) return rows
+  } catch (_) {
+    // Fall back to defaults when unauthenticated or when collection is not seeded.
   }
-  return rows
+
+  return [
+    { slug: 'trekking', name: 'Trekking', brouter_profile_id: 'trekking' },
+    { slug: 'fastbike', name: 'Fast Bike', brouter_profile_id: 'fastbike' },
+    { slug: 'shortest', name: 'Shortest', brouter_profile_id: 'shortest' },
+  ]
 }

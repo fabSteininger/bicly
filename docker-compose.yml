@@ -1,0 +1,28 @@
+version: "3.9"
+
+services:
+  pocketbase:
+    image: ghcr.io/muchobien/pocketbase:0.22.14
+    command: ["serve", "--http=0.0.0.0:8090"]
+    working_dir: /pb
+    volumes:
+      - ./backend:/pb
+    ports:
+      - "8090:8090"
+
+  brouter:
+    image: ghcr.io/abrensch/brouter:latest
+    ports:
+      - "17777:17777"
+
+  frontend:
+    image: node:20-alpine
+    working_dir: /app
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0 --port 5173"
+    volumes:
+      - ./frontend:/app
+    ports:
+      - "5173:5173"
+    depends_on:
+      - pocketbase
+      - brouter

@@ -10,17 +10,12 @@ services:
     ports:
       - "8090:8090"
 
-  brouter:
-    image: ghcr.io/abrensch/brouter:latest
-    ports:
-      - "17777:17777"
-
   frontend:
     image: node:20-alpine
     working_dir: /app
     command: sh -c "npm install && npm run dev -- --host 0.0.0.0 --port 5173"
     environment:
-      - VITE_BROUTER_MODE=${VITE_BROUTER_MODE:-proxy}
+      - VITE_BROUTER_MODE=${VITE_BROUTER_MODE:-direct}
       - VITE_BROUTER_PROXY=${VITE_BROUTER_PROXY:-http://localhost:8090/api/brouter/route}
       - VITE_BROUTER_DIRECT_URL=${VITE_BROUTER_DIRECT_URL:-https://brouter.de/brouter}
     volumes:
@@ -29,4 +24,3 @@ services:
       - "5173:5173"
     depends_on:
       - pocketbase
-      - brouter

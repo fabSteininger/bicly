@@ -273,7 +273,6 @@ export default function App() {
 
       {activePage === 'planner' && <section className={`planner-layout ${plannerPanelOpen ? '' : 'panel-collapsed'}`}>
         <section ref={mapRef} className="map" onClick={() => setPlannerPanelOpen(false)}>
-          <button type="button" className="mobile-planner-toggle" onClick={(e) => { e.stopPropagation(); setPlannerPanelOpen(true) }}>{t.openRouteTools}</button>
         </section>
         <aside className="panel planner-panel">
         <div className="planner-panel-head"><h2>{t.plannerHeading}</h2><button type="button" className="planner-mobile-close" aria-label={t.closePlanner} onClick={() => setPlannerPanelOpen(false)}>✕</button></div><p>{t.addPinsHint}</p>

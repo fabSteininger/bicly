@@ -126,16 +126,6 @@ a { color: var(--accent); }
   display: none;
 }
 
-.mobile-planner-toggle {
-  display: none;
-  position: absolute;
-  left: 0.75rem;
-  top: 0.75rem;
-  z-index: 65;
-  background: #ffffffee;
-  backdrop-filter: blur(4px);
-}
-
 .panel {
   background: var(--panel);
   border: 1px solid var(--line);
@@ -422,10 +412,6 @@ a { color: var(--accent); }
     justify-content: center;
     min-width: 2.4rem;
     font-size: 1.2rem;
-  }
-
-  .mobile-planner-toggle {
-    display: inline-flex;
   }
 
   .map {

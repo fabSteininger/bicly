@@ -81,6 +81,25 @@ a { color: var(--accent); }
 .topbar-controls { position: relative; }
 .topbar-controls.compact { align-self: flex-start; }
 
+.icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.5rem;
+  min-height: 2.5rem;
+  padding: 0.5rem;
+}
+
+.icon-button svg {
+  width: 1.05rem;
+  height: 1.05rem;
+  fill: currentColor;
+}
+
+.app-menu-button .icon-only {
+  display: none;
+}
+
 .account-menu {
   position: absolute;
   right: 0;
@@ -464,5 +483,13 @@ a { color: var(--accent); }
   .auth-panel,
   .map {
     border-radius: 12px;
+  }
+
+  .app-menu-button .button-label {
+    display: none;
+  }
+
+  .app-menu-button .icon-only {
+    display: inline-flex;
   }
 }

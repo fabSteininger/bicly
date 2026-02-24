@@ -13,7 +13,7 @@ const emptyRouteGeoJson = { type: 'FeatureCollection', features: [] }
 
 const TEXT = {
   en: {
-    appTitle: 'Bicly', appSub: 'Plan routes and keep GPX files locally.', planner: 'Planner', library: 'Library',
+    appTitle: 'Bicly', appSub: 'Ride-ready route planning with local GPX storage.', planner: 'Planner', library: 'Library',
     language: 'Language', profile: 'Routing profile', title: 'Route title', clearPins: 'Clear pins',
     saveGenerated: 'Save generated GPX', routeReady: 'Route generated and shown on map.',
     addPinsHint: 'Click on the map to add pins. Drag and reorder on the left.',
@@ -24,9 +24,10 @@ const TEXT = {
     noSaved: 'No saved routes yet.', openGpx: 'Open GPX', loadOnMap: 'Load on map', remove: 'Remove',
     plannerHeading: 'Route planner', libraryHeading: 'Local route library', statusSaved: 'Route saved locally',
     statusUploaded: 'Route uploaded locally', locationUnavailable: 'Location unavailable',
+    openPlanner: 'Open planner', closePlanner: 'Close planner', cyclingMode: 'Cycling mode',
   },
   de: {
-    appTitle: 'Bicly', appSub: 'Plane Routen und speichere GPX lokal.', planner: 'Planer', library: 'Bibliothek',
+    appTitle: 'Bicly', appSub: 'Fahrradfreundliche Routenplanung mit lokaler GPX-Bibliothek.', planner: 'Planer', library: 'Bibliothek',
     language: 'Sprache', profile: 'Routing-Profil', title: 'Routentitel', clearPins: 'Pins löschen',
     saveGenerated: 'Generierte GPX speichern', routeReady: 'Route erzeugt und auf der Karte angezeigt.',
     addPinsHint: 'Klicke auf die Karte, um Pins hinzuzufügen. Links kannst du sie sortieren.',
@@ -37,6 +38,7 @@ const TEXT = {
     noSaved: 'Noch keine gespeicherten Routen.', openGpx: 'GPX öffnen', loadOnMap: 'Auf Karte laden', remove: 'Entfernen',
     plannerHeading: 'Routenplaner', libraryHeading: 'Lokale Routenbibliothek', statusSaved: 'Route lokal gespeichert',
     statusUploaded: 'Route lokal hochgeladen', locationUnavailable: 'Standort nicht verfügbar',
+    openPlanner: 'Planer öffnen', closePlanner: 'Planer schließen', cyclingMode: 'Cycling-Modus',
   },
 }
 
@@ -82,6 +84,7 @@ export default function App() {
   const [placeQuery, setPlaceQuery] = useState('')
   const [placeResults, setPlaceResults] = useState([])
   const [searchingPlaces, setSearchingPlaces] = useState(false)
+  const [plannerPanelOpen, setPlannerPanelOpen] = useState(false)
 
   useEffect(() => { localStorage.setItem(STORAGE_KEY, JSON.stringify(savedRoutes)) }, [savedRoutes])
   useEffect(() => { loadProfiles().then((rows) => { setProfiles(rows); if (rows[0]) setActiveProfile(rows[0].brouter_profile_id) }) }, [])
@@ -181,6 +184,7 @@ export default function App() {
 
   const loadRouteToMap = (route) => {
     setActivePage('planner')
+    setPlannerPanelOpen(false)
     setLatestGpx(route.gpx)
     const geo = parseGpxToGeoJson(route.gpx)
     setRouteGeoJson(geo)
@@ -191,9 +195,9 @@ export default function App() {
   }
 
   return (
-    <main className="app">
+    <main className="app-shell">
       <header className="topbar">
-        <div><h1>{t.appTitle}</h1><p>{t.appSub}</p></div>
+        <div><h1>{t.appTitle}</h1><p>{t.appSub}</p><span className="cycling-pill">🚴 {t.cyclingMode}</span></div>
         <nav>
           <button className={activePage === 'planner' ? 'active' : ''} onClick={() => setActivePage('planner')}>{t.planner}</button>
           <button className={activePage === 'library' ? 'active' : ''} onClick={() => setActivePage('library')}>{t.library}</button>
@@ -202,8 +206,10 @@ export default function App() {
       </header>
       {message && <p className="status info">{message}</p>}
 
-      {activePage === 'planner' && <section className="planner-layout"><aside className="panel planner-panel">
-        <h2>{t.plannerHeading}</h2><p>{t.addPinsHint}</p>
+      {activePage === 'planner' && <section className={`planner-layout ${plannerPanelOpen ? '' : 'panel-collapsed'}`}>
+        <button type="button" className="mobile-planner-toggle" onClick={() => setPlannerPanelOpen(true)}>{t.openPlanner}</button>
+        <aside className="panel planner-panel">
+        <div className="planner-panel-head"><h2>{t.plannerHeading}</h2><button type="button" className="planner-mobile-close" aria-label={t.closePlanner} onClick={() => setPlannerPanelOpen(false)}>✕</button></div><p>{t.addPinsHint}</p>
         <label>{t.profile}</label><select value={activeProfile} onChange={(e) => setActiveProfile(e.target.value)}>{profiles.map((profile) => <option key={profile.slug} value={profile.brouter_profile_id}>{profile.name}</option>)}</select>
         <label>{t.title}</label><input value={title} onChange={(e) => setTitle(e.target.value)} />
         <label>{t.findPlace}</label><input value={placeQuery} onChange={(e) => setPlaceQuery(e.target.value)} placeholder={t.placeSearchPlaceholder} />
@@ -213,7 +219,7 @@ export default function App() {
         <button onClick={() => setWaypoints([])}>{t.clearPins}</button>
         <button onClick={saveGeneratedRoute} disabled={!latestGpx}>{t.saveGenerated}</button>
         {latestGpx && <p className="status info inline">{t.routeReady}</p>}
-      </aside><section ref={mapRef} className="map" /></section>}
+      </aside><section ref={mapRef} className="map" onClick={() => setPlannerPanelOpen(false)} /></section>}
 
       {activePage === 'library' && <section className="library-page"><h2>{t.libraryHeading}</h2>
         <div className="panel upload-panel"><h3>{t.uploadSection}</h3><label>{t.uploadRouteTitle}</label><input value={uploadTitle} onChange={(e) => setUploadTitle(e.target.value)} />

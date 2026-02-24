@@ -4,7 +4,9 @@
   --ink: #101418;
   --muted: #5d6570;
   --line: #d7dce2;
-  --accent: #155eef;
+  --accent: #0a84ff;
+  --accent-strong: #0056d6;
+  --accent-soft: #e8f3ff;
   --danger: #a61b32;
   font-family: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
 }
@@ -20,7 +22,7 @@ body,
 body {
   margin: 0;
   color: var(--ink);
-  background: linear-gradient(160deg, #f6f9ff 0%, #edf3ff 50%, #e8eef8 100%);
+  background: radial-gradient(circle at top left, #f0f9ff 0%, #eaf6ff 35%, #eaf0ff 100%);
   min-height: 100vh;
 }
 
@@ -32,14 +34,17 @@ input,
 select,
 button {
   border: 1px solid var(--line);
-  border-radius: 10px;
+  border-radius: 12px;
   padding: 0.58rem 0.75rem;
   background: #fff;
 }
 
-button { cursor: pointer; }
-button:hover { border-color: #b2bfcd; }
-button.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+button {
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+button:hover { border-color: #92b7ec; transform: translateY(-1px); }
+button.active { background: linear-gradient(160deg, var(--accent), var(--accent-strong)); color: #fff; border-color: var(--accent); }
 a { color: var(--accent); }
 
 .app-shell {
@@ -56,16 +61,42 @@ a { color: var(--accent); }
   position: relative;
   background: var(--panel);
   border: 1px solid var(--line);
-  border-radius: 16px;
+  border-radius: 20px;
   padding: 1rem 1.1rem;
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 0.8rem;
+  box-shadow: 0 10px 32px rgba(28, 66, 112, 0.08);
 }
 
 .topbar h1 { margin: 0; font-size: 1.5rem; }
 .topbar p { margin: 0.25rem 0 0; color: var(--muted); }
+
+.topbar nav {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.topbar nav label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--muted);
+}
+
+.cycling-pill {
+  display: inline-flex;
+  margin-top: 0.5rem;
+  font-size: 0.78rem;
+  color: #0d4a93;
+  background: var(--accent-soft);
+  border: 1px solid #b7d5fb;
+  border-radius: 999px;
+  padding: 0.2rem 0.6rem;
+}
 
 .topbar-controls { position: relative; }
 
@@ -118,12 +149,13 @@ a { color: var(--accent); }
 .panel {
   background: var(--panel);
   border: 1px solid var(--line);
-  border-radius: 16px;
+  border-radius: 20px;
   padding: 1rem;
   display: flex;
   flex-direction: column;
   gap: 0.62rem;
   min-height: 0;
+  box-shadow: 0 12px 28px rgba(19, 46, 86, 0.07);
 }
 
 .panel h2,
@@ -143,9 +175,10 @@ a { color: var(--accent); }
 
 .map {
   border: 1px solid var(--line);
-  border-radius: 16px;
+  border-radius: 20px;
   min-height: 72vh;
   overflow: hidden;
+  box-shadow: 0 14px 30px rgba(18, 44, 84, 0.12);
 }
 
 .waypoint-list {
@@ -162,7 +195,7 @@ a { color: var(--accent); }
   align-items: center;
   gap: 0.44rem;
   border: 1px solid var(--line);
-  border-radius: 10px;
+  border-radius: 12px;
   padding: 0.4rem 0.5rem;
   background: #fff;
 }
@@ -227,6 +260,11 @@ a { color: var(--accent); }
   border: 1px solid var(--line);
   background: #fff;
   font-size: 0.9rem;
+}
+
+.planner-panel > button:last-of-type {
+  background: linear-gradient(160deg, #e8f3ff, #d8ebff);
+  border-color: #b9d8ff;
 }
 
 .waypoint-marker {
@@ -362,8 +400,10 @@ a { color: var(--accent); }
     left: 0.9rem;
     top: 5.2rem;
     z-index: 65;
-    background: #ffffffea;
+    background: #ffffffed;
     backdrop-filter: blur(6px);
+    border-color: #9fc4f3;
+    box-shadow: 0 10px 18px rgba(19, 61, 117, 0.2);
   }
 
   .planner-layout.panel-collapsed .planner-panel {
@@ -379,6 +419,7 @@ a { color: var(--accent); }
     padding: 1.1rem;
     overflow: auto;
     gap: 0.7rem;
+    background: linear-gradient(180deg, #f8fcff 0%, #f3f8ff 100%);
   }
 
   .planner-mobile-close {
@@ -386,6 +427,7 @@ a { color: var(--accent); }
     align-items: center;
     justify-content: center;
     min-width: 2.4rem;
+    font-size: 1.2rem;
   }
 
   .map {

@@ -13,6 +13,18 @@ const emptyRouteGeoJson = { type: 'FeatureCollection', features: [] }
 
 const emptyRouteStats = { distanceKm: 0, ascentM: 0, descentM: 0, rawSummary: '' }
 
+const ExpandIcon = () => (
+  <svg viewBox="0 0 122.883 122.882" aria-hidden="true" focusable="false">
+    <path d="M0,61.441c0-16.966,6.877-32.327,17.996-43.445C29.115,6.877,44.475,0,61.441,0c16.967,0,32.327,6.877,43.446,17.996 c11.119,11.119,17.996,26.479,17.996,43.445c0,16.966-6.877,32.326-17.996,43.445c-11.119,11.118-26.479,17.995-43.446,17.995 c-16.966,0-32.326-6.877-43.445-17.995C6.877,93.768,0,78.407,0,61.441L0,61.441z M42.166,51.505 c-1.784-1.735-4.637-1.695-6.373,0.088c-1.735,1.784-1.695,4.637,0.088,6.372l22.521,21.839l3.142-3.23l-3.146,3.244 c1.792,1.737,4.652,1.693,6.391-0.099c0.049-0.052,0.098-0.104,0.145-0.158l22.084-21.596c1.783-1.735,1.822-4.588,0.088-6.372 c-1.736-1.784-4.588-1.823-6.373-0.088L61.531,70.284L42.166,51.505L42.166,51.505z M24.386,24.386 C14.903,33.869,9.038,46.97,9.038,61.441c0,14.471,5.865,27.572,15.349,37.055c9.482,9.483,22.583,15.349,37.055,15.349 s27.573-5.865,37.055-15.349c9.484-9.482,15.35-22.584,15.35-37.055c0-14.472-5.865-27.573-15.35-37.056 C89.014,14.903,75.912,9.038,61.441,9.038S33.869,14.903,24.386,24.386L24.386,24.386z" />
+  </svg>
+)
+
+const HamburgerIcon = () => (
+  <svg viewBox="0 0 122.88 95.95" aria-hidden="true" focusable="false">
+    <path d="M8.94,0h105c4.92,0,8.94,4.02,8.94,8.94l0,0c0,4.92-4.02,8.94-8.94,8.94h-105C4.02,17.88,0,13.86,0,8.94l0,0 C0,4.02,4.02,0,8.94,0L8.94,0z M8.94,78.07h105c4.92,0,8.94,4.02,8.94,8.94l0,0c0,4.92-4.02,8.94-8.94,8.94h-105 C4.02,95.95,0,91.93,0,87.01l0,0C0,82.09,4.02,78.07,8.94,78.07L8.94,78.07z M8.94,39.03h105c4.92,0,8.94,4.02,8.94,8.94l0,0 c0,4.92-4.02,8.94-8.94,8.94h-105C4.02,56.91,0,52.89,0,47.97l0,0C0,43.06,4.02,39.03,8.94,39.03L8.94,39.03z" />
+  </svg>
+)
+
 const TEXT = {
   en: {
     appTitle: 'Bicly', appSub: 'Ride-ready route planning with local GPX storage.', planner: 'Planner', library: 'Library',
@@ -28,7 +40,7 @@ const TEXT = {
     statusUploaded: 'Route uploaded locally', locationUnavailable: 'Location unavailable',
     openPlanner: 'Open planner', closePlanner: 'Close planner', cyclingMode: 'Cycling mode',
     userMenu: 'Menu', routeDetails: 'Route details', showDetails: 'Show details', hideDetails: 'Hide details',
-    appMenu: 'App menu', openRouteTools: 'Route tools',
+    appMenu: 'App menu', openRouteTools: 'Expand route tools',
     privacyPolicy: 'Privacy policy', impressum: 'Impressum', backToPlanner: 'Back to planner',
     privacyHeading: 'Privacy policy', impressumHeading: 'Impressum',
     distance: 'Distance', ascent: 'Ascent', descent: 'Descent',
@@ -47,7 +59,7 @@ const TEXT = {
     statusUploaded: 'Route lokal hochgeladen', locationUnavailable: 'Standort nicht verfügbar',
     openPlanner: 'Planer öffnen', closePlanner: 'Planer schließen', cyclingMode: 'Cycling-Modus',
     userMenu: 'Menü', routeDetails: 'Routendetails', showDetails: 'Details anzeigen', hideDetails: 'Details ausblenden',
-    appMenu: 'App-Menü', openRouteTools: 'Route bearbeiten',
+    appMenu: 'App-Menü', openRouteTools: 'Routenwerkzeuge aufklappen',
     privacyPolicy: 'Datenschutz', impressum: 'Impressum', backToPlanner: 'Zurück zum Planer',
     privacyHeading: 'Datenschutzerklärung', impressumHeading: 'Impressum',
     distance: 'Distanz', ascent: 'Anstieg', descent: 'Abstieg',
@@ -264,8 +276,8 @@ export default function App() {
           <p>{t.appSub}</p>
         </div>
         <div className="topbar-controls">
-          <button type="button" onClick={() => setUserMenuOpen((prev) => !prev)}>{t.appMenu}</button>
-          {activePage === 'planner' && <button type="button" onClick={(e) => { e.stopPropagation(); setPlannerPanelOpen(true) }}>{t.openRouteTools}</button>}
+          <button type="button" className="icon-button app-menu-button" aria-label={t.appMenu} onClick={() => setUserMenuOpen((prev) => !prev)}><span className="button-label">{t.appMenu}</span><span className="icon-only"><HamburgerIcon /></span></button>
+          {activePage === 'planner' && <button type="button" className="icon-button" aria-label={t.openRouteTools} onClick={(e) => { e.stopPropagation(); setPlannerPanelOpen(true) }}><ExpandIcon /></button>}
           {userMenuOpen && <div className="account-menu"><button className={activePage === 'planner' ? 'active' : ''} onClick={() => { setActivePage('planner'); setUserMenuOpen(false) }}>{t.planner}</button><button className={activePage === 'library' ? 'active' : ''} onClick={() => { setActivePage('library'); setUserMenuOpen(false) }}>{t.library}</button><button className={activePage === 'privacy' ? 'active' : ''} onClick={() => { setActivePage('privacy'); setUserMenuOpen(false) }}>{t.privacyPolicy}</button><button className={activePage === 'impressum' ? 'active' : ''} onClick={() => { setActivePage('impressum'); setUserMenuOpen(false) }}>{t.impressum}</button><label>{t.language}<select value={lang} onChange={(e) => setLang(e.target.value)}><option value="en">English</option><option value="de">Deutsch</option></select></label></div>}
         </div>
       </header>
@@ -273,6 +285,7 @@ export default function App() {
 
       {activePage === 'planner' && <section className={`planner-layout ${plannerPanelOpen ? '' : 'panel-collapsed'}`}>
         <section ref={mapRef} className="map" onClick={() => setPlannerPanelOpen(false)}>
+          <button type="button" className="mobile-planner-toggle icon-button" aria-label={t.openRouteTools} onClick={(e) => { e.stopPropagation(); setPlannerPanelOpen(true) }}><ExpandIcon /></button>
         </section>
         <aside className="panel planner-panel">
         <div className="planner-panel-head"><h2>{t.plannerHeading}</h2><button type="button" className="planner-mobile-close" aria-label={t.closePlanner} onClick={() => setPlannerPanelOpen(false)}>✕</button></div><p>{t.addPinsHint}</p>

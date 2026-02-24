@@ -11,7 +11,7 @@ const STORAGE_KEY = 'bicly_saved_routes'
 
 const emptyRouteGeoJson = { type: 'FeatureCollection', features: [] }
 
-const emptyRouteStats = { distanceKm: 0, ascentM: 0, descentM: 0, rawSummary: '' }
+const emptyRouteStats = { distanceKm: 0, ascentM: 0, descentM: 0, rawSummary: '', elevationProfile: [] }
 
 const ExpandIcon = () => (
   <svg viewBox="0 0 122.883 122.882" aria-hidden="true" focusable="false">
@@ -44,6 +44,7 @@ const TEXT = {
     privacyPolicy: 'Privacy policy', impressum: 'Impressum', backToPlanner: 'Back to planner',
     privacyHeading: 'Privacy policy', impressumHeading: 'Impressum',
     distance: 'Distance', ascent: 'Ascent', descent: 'Descent',
+    elevationProfile: 'Elevation profile', steepLegend: 'Steepness (10°+ = red)',
   },
   de: {
     appTitle: 'Bicly', appSub: 'Fahrradfreundliche Routenplanung mit lokaler GPX-Bibliothek.', planner: 'Planer', library: 'Bibliothek',
@@ -63,7 +64,45 @@ const TEXT = {
     privacyPolicy: 'Datenschutz', impressum: 'Impressum', backToPlanner: 'Zurück zum Planer',
     privacyHeading: 'Datenschutzerklärung', impressumHeading: 'Impressum',
     distance: 'Distanz', ascent: 'Anstieg', descent: 'Abstieg',
+    elevationProfile: 'Höhenprofil', steepLegend: 'Steigung (ab 10° = rot)',
   },
+}
+
+const ElevationChart = ({ profile, title, legend }) => {
+  if (!profile.length) return null
+  const width = 320
+  const height = 120
+  const paddingX = 8
+  const paddingY = 8
+  const maxDistance = profile[profile.length - 1]?.distanceM || 1
+  const elevations = profile.map((point) => point.elevationM)
+  const minElevation = Math.min(...elevations)
+  const maxElevation = Math.max(...elevations)
+  const elevationRange = Math.max(maxElevation - minElevation, 1)
+  const xFor = (distanceM) => paddingX + (distanceM / maxDistance) * (width - (paddingX * 2))
+  const yFor = (elevationM) => height - paddingY - ((elevationM - minElevation) / elevationRange) * (height - (paddingY * 2))
+
+  return (
+    <section className="elevation-chart" aria-label={title}>
+      <h4>{title}</h4>
+      <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label={title}>
+        <defs>
+          <linearGradient id="elevation-fill" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#a8c8ff" stopOpacity="0.85" />
+            <stop offset="100%" stopColor="#e9f2ff" stopOpacity="0.2" />
+          </linearGradient>
+        </defs>
+        <path d={`M ${xFor(profile[0].distanceM)} ${height - paddingY} ${profile.map((point) => `L ${xFor(point.distanceM)} ${yFor(point.elevationM)}`).join(' ')} L ${xFor(profile[profile.length - 1].distanceM)} ${height - paddingY} Z`} fill="url(#elevation-fill)" />
+        {profile.slice(1).map((point, index) => {
+          const prev = profile[index]
+          const angle = point.slopeDeg
+          const color = angle >= 10 ? '#e22b2b' : angle >= 6 ? '#ef8f2e' : '#1f6feb'
+          return <line key={`${point.distanceM}-${point.elevationM}`} x1={xFor(prev.distanceM)} y1={yFor(prev.elevationM)} x2={xFor(point.distanceM)} y2={yFor(point.elevationM)} stroke={color} strokeWidth="2.6" strokeLinecap="round" />
+        })}
+      </svg>
+      <small>{legend}</small>
+    </section>
+  )
 }
 
 const haversineMeters = (a, b) => {
@@ -106,6 +145,17 @@ const parseGpxStats = (gpxText) => {
       ascentM,
       descentM,
       rawSummary,
+      elevationProfile: trkpts.reduce((acc, point, index) => {
+        if (!Number.isFinite(point.ele)) return acc
+        if (!index) return [{ distanceM: 0, elevationM: point.ele, slopeDeg: 0 }]
+        const previous = trkpts[index - 1]
+        const previousDistance = acc[acc.length - 1]?.distanceM ?? 0
+        const segmentMeters = haversineMeters(previous, point)
+        const slopeDeg = Number.isFinite(previous.ele) && segmentMeters > 0
+          ? Math.abs((Math.atan((point.ele - previous.ele) / segmentMeters) * 180) / Math.PI)
+          : 0
+        return [...acc, { distanceM: previousDistance + segmentMeters, elevationM: point.ele, slopeDeg }]
+      }, []),
     }
   } catch {
     return emptyRouteStats
@@ -225,19 +275,6 @@ export default function App() {
     return () => { clearTimeout(timer); controller.abort() }
   }, [placeQuery, lang])
 
-  const useMyLocationAsStart = async () => {
-    if (!navigator.geolocation) return setMessage(t.locationUnavailable)
-    navigator.geolocation.getCurrentPosition((pos) => {
-      const start = { id: crypto.randomUUID(), label: 'Start', lon: Number(pos.coords.longitude.toFixed(6)), lat: Number(pos.coords.latitude.toFixed(6)) }
-      setWaypoints((prev) => prev.length ? [start, ...prev.slice(1)] : [start])
-    }, () => setMessage(t.locationUnavailable))
-  }
-
-  const addMyLocationPoint = async () => {
-    if (!navigator.geolocation) return setMessage(t.locationUnavailable)
-    navigator.geolocation.getCurrentPosition((pos) => addWaypoint('My location', pos.coords.longitude, pos.coords.latitude), () => setMessage(t.locationUnavailable))
-  }
-
   const saveGeneratedRoute = () => {
     if (!latestGpx) return
     setSavedRoutes((prev) => [{ id: crypto.randomUUID(), title: title.trim() || 'Route', gpx: latestGpx }, ...prev])
@@ -293,12 +330,11 @@ export default function App() {
         <label>{t.title}</label><input value={title} onChange={(e) => setTitle(e.target.value)} />
         <label>{t.findPlace}</label><input value={placeQuery} onChange={(e) => setPlaceQuery(e.target.value)} placeholder={t.placeSearchPlaceholder} />
         {(searchingPlaces || placeResults.length > 0 || (placeQuery.trim().length >= 3 && !placeResults.length)) && <div className="place-results">{searchingPlaces && <small>{t.searchingPlaces}</small>}{!searchingPlaces && !placeResults.length && <small>{t.noPlacesFound}</small>}{!searchingPlaces && placeResults.map((place) => <button key={place.id} type="button" className="place-result" onClick={() => addWaypoint(place.label, place.lon, place.lat)}>{place.label}</button>)}</div>}
-        <div className="quick-actions"><button onClick={useMyLocationAsStart}>{t.useLocationStart}</button><button onClick={addMyLocationPoint}>{t.addMyLocation}</button></div>
         <WaypointList waypoints={waypoints} setWaypoints={setWaypoints} />
         <button onClick={() => setWaypoints([])}>{t.clearPins}</button>
         <button onClick={saveGeneratedRoute} disabled={!latestGpx}>{t.saveGenerated}</button>
         <button type="button" onClick={() => setShowRouteDetails((prev) => !prev)} disabled={!latestGpx}>{showRouteDetails ? t.hideDetails : t.showDetails}</button>
-        {showRouteDetails && latestGpx && <section className="route-details"><h3>{t.routeDetails}</h3><p><strong>{t.distance}:</strong> {routeStats.distanceKm.toFixed(1)} km</p><p><strong>{t.ascent}:</strong> {Math.round(routeStats.ascentM)} m</p><p><strong>{t.descent}:</strong> {Math.round(routeStats.descentM)} m</p>{routeStats.rawSummary && <p>{routeStats.rawSummary}</p>}</section>}
+        {showRouteDetails && latestGpx && <section className="route-details"><h3>{t.routeDetails}</h3><p><strong>{t.distance}:</strong> {routeStats.distanceKm.toFixed(1)} km</p><p><strong>{t.ascent}:</strong> {Math.round(routeStats.ascentM)} m</p><p><strong>{t.descent}:</strong> {Math.round(routeStats.descentM)} m</p>{routeStats.rawSummary && <p>{routeStats.rawSummary}</p>}<ElevationChart profile={routeStats.elevationProfile} title={t.elevationProfile} legend={t.steepLegend} /></section>}
         {latestGpx && <p className="status info inline">{t.routeReady}</p>}
       </aside></section>}
 

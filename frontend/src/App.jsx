@@ -28,6 +28,7 @@ const TEXT = {
     statusUploaded: 'Route uploaded locally', locationUnavailable: 'Location unavailable',
     openPlanner: 'Open planner', closePlanner: 'Close planner', cyclingMode: 'Cycling mode',
     userMenu: 'Menu', routeDetails: 'Route details', showDetails: 'Show details', hideDetails: 'Hide details',
+    appMenu: 'App menu', openRouteTools: 'Route tools',
     distance: 'Distance', ascent: 'Ascent', descent: 'Descent',
   },
   de: {
@@ -44,6 +45,7 @@ const TEXT = {
     statusUploaded: 'Route lokal hochgeladen', locationUnavailable: 'Standort nicht verfügbar',
     openPlanner: 'Planer öffnen', closePlanner: 'Planer schließen', cyclingMode: 'Cycling-Modus',
     userMenu: 'Menü', routeDetails: 'Routendetails', showDetails: 'Details anzeigen', hideDetails: 'Details ausblenden',
+    appMenu: 'App-Menü', openRouteTools: 'Route bearbeiten',
     distance: 'Distanz', ascent: 'Anstieg', descent: 'Abstieg',
   },
 }
@@ -252,21 +254,17 @@ export default function App() {
 
   return (
     <main className="app-shell">
-      <header className="topbar">
-        <div><h1>{t.appTitle}</h1><p>{t.appSub}</p><span className="cycling-pill">🚴 {t.cyclingMode}</span></div>
-        <nav>
-          <button className={activePage === 'planner' ? 'active' : ''} onClick={() => setActivePage('planner')}>{t.planner}</button>
-          <button className={activePage === 'library' ? 'active' : ''} onClick={() => setActivePage('library')}>{t.library}</button>
-          <div className="topbar-controls">
-            <button type="button" onClick={() => setUserMenuOpen((prev) => !prev)}>{t.userMenu}</button>
-            {userMenuOpen && <div className="account-menu"><label>{t.language}<select value={lang} onChange={(e) => setLang(e.target.value)}><option value="en">English</option><option value="de">Deutsch</option></select></label></div>}
-          </div>
-        </nav>
-      </header>
+      <div className="app-brand">{t.appTitle}</div>
       {message && <p className="status info">{message}</p>}
 
       {activePage === 'planner' && <section className={`planner-layout ${plannerPanelOpen ? '' : 'panel-collapsed'}`}>
-        <button type="button" className="mobile-planner-toggle" onClick={() => setPlannerPanelOpen(true)}>{t.openPlanner}</button>
+        <section ref={mapRef} className="map" onClick={() => setPlannerPanelOpen(false)}>
+          <div className="map-controls" onClick={(e) => e.stopPropagation()}>
+            <button type="button" onClick={() => setUserMenuOpen((prev) => !prev)}>{t.appMenu}</button>
+            {userMenuOpen && <div className="account-menu"><button className={activePage === 'planner' ? 'active' : ''} onClick={() => { setActivePage('planner'); setUserMenuOpen(false) }}>{t.planner}</button><button className={activePage === 'library' ? 'active' : ''} onClick={() => { setActivePage('library'); setUserMenuOpen(false) }}>{t.library}</button><label>{t.language}<select value={lang} onChange={(e) => setLang(e.target.value)}><option value="en">English</option><option value="de">Deutsch</option></select></label></div>}
+          </div>
+          <button type="button" className="mobile-planner-toggle" onClick={() => setPlannerPanelOpen(true)}>{t.openRouteTools}</button>
+        </section>
         <aside className="panel planner-panel">
         <div className="planner-panel-head"><h2>{t.plannerHeading}</h2><button type="button" className="planner-mobile-close" aria-label={t.closePlanner} onClick={() => setPlannerPanelOpen(false)}>✕</button></div><p>{t.addPinsHint}</p>
         <label>{t.profile}</label><select value={activeProfile} onChange={(e) => setActiveProfile(e.target.value)}>{profiles.map((profile) => <option key={profile.slug} value={profile.brouter_profile_id}>{profile.name}</option>)}</select>
@@ -280,9 +278,9 @@ export default function App() {
         <button type="button" onClick={() => setShowRouteDetails((prev) => !prev)} disabled={!latestGpx}>{showRouteDetails ? t.hideDetails : t.showDetails}</button>
         {showRouteDetails && latestGpx && <section className="route-details"><h3>{t.routeDetails}</h3><p><strong>{t.distance}:</strong> {routeStats.distanceKm.toFixed(1)} km</p><p><strong>{t.ascent}:</strong> {Math.round(routeStats.ascentM)} m</p><p><strong>{t.descent}:</strong> {Math.round(routeStats.descentM)} m</p>{routeStats.rawSummary && <p>{routeStats.rawSummary}</p>}</section>}
         {latestGpx && <p className="status info inline">{t.routeReady}</p>}
-      </aside><section ref={mapRef} className="map" onClick={() => setPlannerPanelOpen(false)} /></section>}
+      </aside></section>}
 
-      {activePage === 'library' && <section className="library-page"><h2>{t.libraryHeading}</h2>
+      {activePage === 'library' && <section className="library-page"><div className="topbar-controls compact"><button type="button" onClick={() => setUserMenuOpen((prev) => !prev)}>{t.appMenu}</button>{userMenuOpen && <div className="account-menu"><button onClick={() => { setActivePage('planner'); setUserMenuOpen(false) }}>{t.planner}</button><button className="active" onClick={() => setUserMenuOpen(false)}>{t.library}</button><label>{t.language}<select value={lang} onChange={(e) => setLang(e.target.value)}><option value="en">English</option><option value="de">Deutsch</option></select></label></div>}</div><h2>{t.libraryHeading}</h2>
         <div className="panel upload-panel"><h3>{t.uploadSection}</h3><label>{t.uploadRouteTitle}</label><input value={uploadTitle} onChange={(e) => setUploadTitle(e.target.value)} />
           <label className="upload">{t.uploadGpx}<input type="file" accept=".gpx,application/gpx+xml" onChange={(e) => setUploadGpxFile(e.target.files?.[0] ?? null)} /></label>
           <button type="button" onClick={uploadGpx} disabled={!uploadGpxFile}>{t.uploadRouteButton}</button></div>

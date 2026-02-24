@@ -11,6 +11,8 @@ const STORAGE_KEY = 'bicly_saved_routes'
 
 const emptyRouteGeoJson = { type: 'FeatureCollection', features: [] }
 
+const emptyRouteStats = { distanceKm: 0, ascentM: 0, descentM: 0, rawSummary: '' }
+
 const TEXT = {
   en: {
     appTitle: 'Bicly', appSub: 'Ride-ready route planning with local GPX storage.', planner: 'Planner', library: 'Library',
@@ -25,6 +27,8 @@ const TEXT = {
     plannerHeading: 'Route planner', libraryHeading: 'Local route library', statusSaved: 'Route saved locally',
     statusUploaded: 'Route uploaded locally', locationUnavailable: 'Location unavailable',
     openPlanner: 'Open planner', closePlanner: 'Close planner', cyclingMode: 'Cycling mode',
+    userMenu: 'Menu', routeDetails: 'Route details', showDetails: 'Show details', hideDetails: 'Hide details',
+    distance: 'Distance', ascent: 'Ascent', descent: 'Descent',
   },
   de: {
     appTitle: 'Bicly', appSub: 'Fahrradfreundliche Routenplanung mit lokaler GPX-Bibliothek.', planner: 'Planer', library: 'Bibliothek',
@@ -39,7 +43,55 @@ const TEXT = {
     plannerHeading: 'Routenplaner', libraryHeading: 'Lokale Routenbibliothek', statusSaved: 'Route lokal gespeichert',
     statusUploaded: 'Route lokal hochgeladen', locationUnavailable: 'Standort nicht verfügbar',
     openPlanner: 'Planer öffnen', closePlanner: 'Planer schließen', cyclingMode: 'Cycling-Modus',
+    userMenu: 'Menü', routeDetails: 'Routendetails', showDetails: 'Details anzeigen', hideDetails: 'Details ausblenden',
+    distance: 'Distanz', ascent: 'Anstieg', descent: 'Abstieg',
   },
+}
+
+const haversineMeters = (a, b) => {
+  const toRad = (deg) => deg * (Math.PI / 180)
+  const R = 6371000
+  const dLat = toRad(b.lat - a.lat)
+  const dLon = toRad(b.lon - a.lon)
+  const x = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLon / 2) ** 2
+  return 2 * R * Math.asin(Math.sqrt(x))
+}
+
+const parseGpxStats = (gpxText) => {
+  if (!gpxText) return emptyRouteStats
+  try {
+    const xml = new DOMParser().parseFromString(gpxText, 'application/xml')
+    const trkpts = Array.from(xml.querySelectorAll('trkpt'))
+      .map((node) => ({
+        lon: Number(node.getAttribute('lon')),
+        lat: Number(node.getAttribute('lat')),
+        ele: Number(node.querySelector('ele')?.textContent ?? Number.NaN),
+      }))
+      .filter((point) => Number.isFinite(point.lon) && Number.isFinite(point.lat))
+    if (trkpts.length < 2) return emptyRouteStats
+
+    let distanceMeters = 0
+    let ascentM = 0
+    let descentM = 0
+    for (let i = 1; i < trkpts.length; i += 1) {
+      distanceMeters += haversineMeters(trkpts[i - 1], trkpts[i])
+      if (Number.isFinite(trkpts[i - 1].ele) && Number.isFinite(trkpts[i].ele)) {
+        const delta = trkpts[i].ele - trkpts[i - 1].ele
+        if (delta > 0) ascentM += delta
+        if (delta < 0) descentM += Math.abs(delta)
+      }
+    }
+
+    const rawSummary = xml.querySelector('metadata > desc')?.textContent?.trim() ?? ''
+    return {
+      distanceKm: distanceMeters / 1000,
+      ascentM,
+      descentM,
+      rawSummary,
+    }
+  } catch {
+    return emptyRouteStats
+  }
 }
 
 const parseGpxToGeoJson = (gpxText) => {
@@ -85,6 +137,9 @@ export default function App() {
   const [placeResults, setPlaceResults] = useState([])
   const [searchingPlaces, setSearchingPlaces] = useState(false)
   const [plannerPanelOpen, setPlannerPanelOpen] = useState(false)
+  const [userMenuOpen, setUserMenuOpen] = useState(false)
+  const [showRouteDetails, setShowRouteDetails] = useState(false)
+  const [routeStats, setRouteStats] = useState(emptyRouteStats)
 
   useEffect(() => { localStorage.setItem(STORAGE_KEY, JSON.stringify(savedRoutes)) }, [savedRoutes])
   useEffect(() => { loadProfiles().then((rows) => { setProfiles(rows); if (rows[0]) setActiveProfile(rows[0].brouter_profile_id) }) }, [])
@@ -127,11 +182,11 @@ export default function App() {
   }, [routeGeoJson])
 
   useEffect(() => {
-    if (waypoints.length < 2) { setLatestGpx(''); setRouteGeoJson(emptyRouteGeoJson); return }
+    if (waypoints.length < 2) { setLatestGpx(''); setRouteGeoJson(emptyRouteGeoJson); setRouteStats(emptyRouteStats); setShowRouteDetails(false); return }
     const controller = new AbortController()
     fetch(buildBrouterRouteUrl({ profile: activeProfile, points: brouterPoints }), { signal: controller.signal })
       .then((r) => r.ok ? r.text() : Promise.reject(new Error('BRouter request failed')))
-      .then((text) => { setLatestGpx(text); setRouteGeoJson(parseGpxToGeoJson(text)) })
+      .then((text) => { setLatestGpx(text); setRouteGeoJson(parseGpxToGeoJson(text)); setRouteStats(parseGpxStats(text)) })
       .catch(() => {})
     return () => controller.abort()
   }, [activeProfile, brouterPoints, waypoints.length])
@@ -188,6 +243,7 @@ export default function App() {
     setLatestGpx(route.gpx)
     const geo = parseGpxToGeoJson(route.gpx)
     setRouteGeoJson(geo)
+    setRouteStats(parseGpxStats(route.gpx))
     const line = geo.features[0]?.geometry?.coordinates ?? []
     if (line.length) {
       setWaypoints(line.slice(0, Math.min(12, line.length)).map(([lon, lat], i) => ({ id: crypto.randomUUID(), label: `Pin ${i + 1}`, lon, lat })))
@@ -201,7 +257,10 @@ export default function App() {
         <nav>
           <button className={activePage === 'planner' ? 'active' : ''} onClick={() => setActivePage('planner')}>{t.planner}</button>
           <button className={activePage === 'library' ? 'active' : ''} onClick={() => setActivePage('library')}>{t.library}</button>
-          <label>{t.language}<select value={lang} onChange={(e) => setLang(e.target.value)}><option value="en">English</option><option value="de">Deutsch</option></select></label>
+          <div className="topbar-controls">
+            <button type="button" onClick={() => setUserMenuOpen((prev) => !prev)}>{t.userMenu}</button>
+            {userMenuOpen && <div className="account-menu"><label>{t.language}<select value={lang} onChange={(e) => setLang(e.target.value)}><option value="en">English</option><option value="de">Deutsch</option></select></label></div>}
+          </div>
         </nav>
       </header>
       {message && <p className="status info">{message}</p>}
@@ -218,6 +277,8 @@ export default function App() {
         <WaypointList waypoints={waypoints} setWaypoints={setWaypoints} />
         <button onClick={() => setWaypoints([])}>{t.clearPins}</button>
         <button onClick={saveGeneratedRoute} disabled={!latestGpx}>{t.saveGenerated}</button>
+        <button type="button" onClick={() => setShowRouteDetails((prev) => !prev)} disabled={!latestGpx}>{showRouteDetails ? t.hideDetails : t.showDetails}</button>
+        {showRouteDetails && latestGpx && <section className="route-details"><h3>{t.routeDetails}</h3><p><strong>{t.distance}:</strong> {routeStats.distanceKm.toFixed(1)} km</p><p><strong>{t.ascent}:</strong> {Math.round(routeStats.ascentM)} m</p><p><strong>{t.descent}:</strong> {Math.round(routeStats.descentM)} m</p>{routeStats.rawSummary && <p>{routeStats.rawSummary}</p>}</section>}
         {latestGpx && <p className="status info inline">{t.routeReady}</p>}
       </aside><section ref={mapRef} className="map" onClick={() => setPlannerPanelOpen(false)} /></section>}
 

@@ -45,6 +45,7 @@ const TEXT = {
     privacyHeading: 'Privacy policy', impressumHeading: 'Impressum',
     distance: 'Distance', ascent: 'Ascent', descent: 'Descent',
     elevationProfile: 'Elevation profile', steepLegend: 'Steepness (10°+ = red)',
+    openRouteDetailsSheet: 'Open route details', closeRouteDetailsSheet: 'Close route details',
   },
   de: {
     appTitle: 'Bicly', appSub: 'Fahrradfreundliche Routenplanung mit lokaler GPX-Bibliothek.', planner: 'Planer', library: 'Bibliothek',
@@ -65,6 +66,7 @@ const TEXT = {
     privacyHeading: 'Datenschutzerklärung', impressumHeading: 'Impressum',
     distance: 'Distanz', ascent: 'Anstieg', descent: 'Abstieg',
     elevationProfile: 'Höhenprofil', steepLegend: 'Steigung (ab 10° = rot)',
+    openRouteDetailsSheet: 'Routendetails öffnen', closeRouteDetailsSheet: 'Routendetails schließen',
   },
 }
 
@@ -324,6 +326,19 @@ export default function App() {
         <section ref={mapRef} className="map" onClick={() => setPlannerPanelOpen(false)}>
           <button type="button" className="mobile-planner-toggle icon-button" aria-label={t.openRouteTools} onClick={(e) => { e.stopPropagation(); setPlannerPanelOpen(true) }}><ExpandIcon /></button>
         </section>
+        {latestGpx && <section className={`route-bottom-sheet ${showRouteDetails ? 'open' : 'closed'}`}>
+          <button
+            type="button"
+            className="route-bottom-sheet-toggle"
+            aria-expanded={showRouteDetails}
+            aria-label={showRouteDetails ? t.closeRouteDetailsSheet : t.openRouteDetailsSheet}
+            onClick={() => setShowRouteDetails((prev) => !prev)}
+          >
+            <span>{t.routeDetails}</span>
+            <span aria-hidden="true">{showRouteDetails ? '▾' : '▴'}</span>
+          </button>
+          {showRouteDetails && <section className="route-details"><h3>{t.routeDetails}</h3><p><strong>{t.distance}:</strong> {routeStats.distanceKm.toFixed(1)} km</p><p><strong>{t.ascent}:</strong> {Math.round(routeStats.ascentM)} m</p><p><strong>{t.descent}:</strong> {Math.round(routeStats.descentM)} m</p>{routeStats.rawSummary && <p>{routeStats.rawSummary}</p>}<ElevationChart profile={routeStats.elevationProfile} title={t.elevationProfile} legend={t.steepLegend} /></section>}
+        </section>}
         <aside className="panel planner-panel">
         <div className="planner-panel-head"><h2>{t.plannerHeading}</h2><button type="button" className="planner-mobile-close" aria-label={t.closePlanner} onClick={() => setPlannerPanelOpen(false)}>✕</button></div><p>{t.addPinsHint}</p>
         <label>{t.profile}</label><select value={activeProfile} onChange={(e) => setActiveProfile(e.target.value)}>{profiles.map((profile) => <option key={profile.slug} value={profile.brouter_profile_id}>{profile.name}</option>)}</select>
@@ -333,8 +348,6 @@ export default function App() {
         <WaypointList waypoints={waypoints} setWaypoints={setWaypoints} />
         <button onClick={() => setWaypoints([])}>{t.clearPins}</button>
         <button onClick={saveGeneratedRoute} disabled={!latestGpx}>{t.saveGenerated}</button>
-        <button type="button" onClick={() => setShowRouteDetails((prev) => !prev)} disabled={!latestGpx}>{showRouteDetails ? t.hideDetails : t.showDetails}</button>
-        {showRouteDetails && latestGpx && <section className="route-details"><h3>{t.routeDetails}</h3><p><strong>{t.distance}:</strong> {routeStats.distanceKm.toFixed(1)} km</p><p><strong>{t.ascent}:</strong> {Math.round(routeStats.ascentM)} m</p><p><strong>{t.descent}:</strong> {Math.round(routeStats.descentM)} m</p>{routeStats.rawSummary && <p>{routeStats.rawSummary}</p>}<ElevationChart profile={routeStats.elevationProfile} title={t.elevationProfile} legend={t.steepLegend} /></section>}
         {latestGpx && <p className="status info inline">{t.routeReady}</p>}
       </aside></section>}
 

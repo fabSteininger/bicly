@@ -127,6 +127,7 @@ const TEXT = {
     findPlace: 'Find place', placeSearchPlaceholder: 'Search city, street, or POI', noPlacesFound: 'No places found',
     searchingPlaces: 'Searching...', uploadSection: 'Upload route', uploadGpx: 'Upload GPX',
     uploadRouteTitle: 'Route title (optional)', uploadRouteButton: 'Save to local library',
+    invalidGpx: 'Invalid GPX file',
     noSaved: 'No saved routes yet.', downloadGpx: 'Download GPX', loadOnMap: 'Load on map', remove: 'Remove',
     plannerHeading: 'Route planner', libraryHeading: 'Local route library', statusSaved: 'Route saved locally',
     statusUploaded: 'Route uploaded locally', locationUnavailable: 'Location unavailable',
@@ -159,6 +160,7 @@ const TEXT = {
     findPlace: 'Ort suchen', placeSearchPlaceholder: 'Stadt, Straße oder POI suchen', noPlacesFound: 'Keine Orte gefunden',
     searchingPlaces: 'Suche...', uploadSection: 'Route hochladen', uploadGpx: 'GPX hochladen',
     uploadRouteTitle: 'Routentitel (optional)', uploadRouteButton: 'Lokal speichern',
+    invalidGpx: 'Ungültige GPX-Datei',
     noSaved: 'Noch keine gespeicherten Routen.', downloadGpx: 'GPX herunterladen', loadOnMap: 'Auf Karte laden', remove: 'Entfernen',
     plannerHeading: 'Routenplaner', libraryHeading: 'Lokale Routenbibliothek', statusSaved: 'Route lokal gespeichert',
     statusUploaded: 'Route lokal hochgeladen', locationUnavailable: 'Standort nicht verfügbar',
@@ -632,6 +634,10 @@ export default function App() {
   const uploadGpx = async () => {
     if (!uploadGpxFile) return
     const gpx = await uploadGpxFile.text()
+    if (!gpx.includes('<gpx') || !gpx.includes('http://www.topografix.com/GPX/1/1')) {
+      setMessage(t.invalidGpx)
+      return
+    }
     setSavedRoutes((prev) => [{ id: crypto.randomUUID(), title: (uploadTitle || uploadGpxFile.name.replace('.gpx', '')).trim(), gpx }, ...prev])
     setUploadGpxFile(null)
     setUploadTitle('')

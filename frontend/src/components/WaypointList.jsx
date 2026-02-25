@@ -3,7 +3,7 @@ import { DndContext, PointerSensor, useSensor, useSensors, closestCenter, DragOv
 import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 
-function SortableWaypoint({ waypoint, onRemove }) {
+function SortableWaypoint({ waypoint, index, isFirst, isLast, onRemove, onMoveUp, onMoveDown }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: waypoint.id })
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -18,7 +18,11 @@ function SortableWaypoint({ waypoint, onRemove }) {
         <span className="waypoint-label">{waypoint.label}</span>
         <small className="waypoint-coords">{waypoint.lat.toFixed(5)}, {waypoint.lon.toFixed(5)}</small>
       </div>
-      <button className="remove-waypoint" onClick={() => onRemove(waypoint.id)} title="Remove waypoint">✕</button>
+      <div className="waypoint-actions">
+        <button className="move-waypoint" onClick={() => onMoveUp(index)} disabled={isFirst} title="Move up">↑</button>
+        <button className="move-waypoint" onClick={() => onMoveDown(index)} disabled={isLast} title="Move down">↓</button>
+        <button className="remove-waypoint" onClick={() => onRemove(waypoint.id)} title="Remove waypoint">✕</button>
+      </div>
     </li>
   )
 }
@@ -39,6 +43,16 @@ export default function WaypointList({ waypoints, setWaypoints }) {
 
   const onRemove = (id) => setWaypoints(waypoints.filter((w) => w.id !== id))
 
+  const moveUp = (index) => {
+    if (index <= 0) return
+    setWaypoints(arrayMove(waypoints, index, index - 1))
+  }
+
+  const moveDown = (index) => {
+    if (index >= waypoints.length - 1) return
+    setWaypoints(arrayMove(waypoints, index, index + 1))
+  }
+
   return (
     <DndContext
       sensors={sensors}
@@ -52,8 +66,17 @@ export default function WaypointList({ waypoints, setWaypoints }) {
     >
       <SortableContext items={waypoints.map((w) => w.id)} strategy={verticalListSortingStrategy}>
         <ul className="waypoint-list">
-          {waypoints.map((waypoint) => (
-            <SortableWaypoint key={waypoint.id} waypoint={waypoint} onRemove={onRemove} />
+          {waypoints.map((waypoint, index) => (
+            <SortableWaypoint
+              key={waypoint.id}
+              waypoint={waypoint}
+              index={index}
+              isFirst={index === 0}
+              isLast={index === waypoints.length - 1}
+              onRemove={onRemove}
+              onMoveUp={moveUp}
+              onMoveDown={moveDown}
+            />
           ))}
         </ul>
       </SortableContext>

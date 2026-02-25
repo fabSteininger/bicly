@@ -137,8 +137,18 @@ a { color: var(--accent); }
 .planner-layout {
   flex: 1;
   min-height: 0;
-  display: block;
+  display: flex;
+  flex-direction: column;
   position: relative;
+}
+
+.map-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  height: 100%;
+  min-height: 0;
+  flex: 1;
 }
 
 .planner-layout.panel-collapsed .planner-panel {
@@ -190,10 +200,10 @@ a { color: var(--accent); }
 .map {
   position: relative;
   border: 1px solid var(--line);
-  border-radius: 18px 18px 28px 28px;
-  min-height: 0;
-  height: 78dvh;
-  max-height: 780px;
+  border-radius: 18px;
+  min-height: 300px;
+  height: auto;
+  flex: 1;
   overflow: hidden;
   box-shadow: 0 14px 30px rgba(18, 44, 84, 0.12);
 }
@@ -206,17 +216,14 @@ a { color: var(--accent); }
 }
 
 .route-bottom-sheet {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 35;
+  position: relative;
+  z-index: 20;
   background: #fffffff2;
   border: 1px solid var(--line);
   border-radius: 16px;
   backdrop-filter: blur(8px);
   box-shadow: 0 14px 30px rgba(18, 44, 84, 0.14);
-  max-height: min(45vh, 360px);
+  max-height: min(40vh, 320px);
   padding-bottom: env(safe-area-inset-bottom, 0);
   overflow: hidden;
   display: flex;
@@ -242,6 +249,7 @@ a { color: var(--accent); }
 .route-bottom-sheet .route-details {
   margin: 0.7rem;
   overflow: auto;
+  -webkit-overflow-scrolling: touch;
   min-height: 0;
   flex: 1;
 }
@@ -520,12 +528,11 @@ a { color: var(--accent); }
   }
 
   .map {
-    min-height: 100%;
-    height: 72dvh;
+    min-height: 260px;
   }
 
   .route-bottom-sheet {
-    max-height: min(62vh, 520px);
+    max-height: min(44vh, 380px);
   }
 }
 
@@ -570,12 +577,18 @@ a { color: var(--accent); }
   }
 
   .planner-panel {
+    position: fixed;
     inset: 0;
     width: 100%;
-    height: 100%;
+    height: 100dvh;
     max-height: none;
     border-radius: 0;
     z-index: 80;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    touch-action: pan-y;
+    padding-bottom: calc(0.9rem + env(safe-area-inset-bottom, 0));
+    -webkit-overflow-scrolling: touch;
   }
 
 }

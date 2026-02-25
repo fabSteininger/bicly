@@ -260,6 +260,14 @@ const ElevationChart = ({ profile, title, activeDistanceM, onHoverPoint, onLeave
             }
             return elevation
           },
+          labelColor: (item) => {
+            const point = displayProfile[item.dataIndex]
+            const color = point.slopeDeg >= 10 ? '#f28b82' : point.slopeDeg >= 6 ? '#fdd663' : accentColor
+            return {
+              borderColor: color,
+              backgroundColor: color,
+            }
+          }
         },
       },
       verticalLine: {
@@ -322,9 +330,6 @@ const ElevationChart = ({ profile, title, activeDistanceM, onHoverPoint, onLeave
 
   return (
     <section className="elevation-chart" aria-label={title}>
-      <div className="elevation-chart-header">
-        <h4>{title}</h4>
-      </div>
       <div className="elevation-chart-container">
         <Line data={data} options={options} />
       </div>
@@ -614,6 +619,15 @@ export default function App() {
   }, [map, activeElevationPoint])
 
   useEffect(() => {
+    if (map) {
+      const style = theme === 'dark'
+        ? 'https://tiles.openfreemap.org/styles/dark'
+        : 'https://tiles.openfreemap.org/styles/liberty'
+      map.setStyle(style)
+    }
+  }, [theme, map])
+
+  useEffect(() => {
     if (waypoints.length < 2) { setLatestGpx(''); setRouteGeoJson(emptyRouteGeoJson); setRouteStats(emptyRouteStats); setShowRouteDetails(false); return }
     if (isExternalRoute) return
 
@@ -770,11 +784,6 @@ export default function App() {
             <p className={showSubtitle ? 'force-show' : ''}>{t.appSub}</p>
           </div>
           <div className="topbar-controls">
-            {activePage !== 'planner' && (
-              <button type="button" onClick={() => { setActivePage('planner'); setPlannerPanelOpen(true); }}>
-                {t.planner}
-              </button>
-            )}
           </div>
         </header>
         {message && <p className="status info">{message}</p>}

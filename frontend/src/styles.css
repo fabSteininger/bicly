@@ -8,8 +8,8 @@
   --accent-strong: #0056d6;
   --accent-soft: #e8f3ff;
   --danger: #a61b32;
-  --shadow: 0 2px 4px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.1);
-  --radius: 16px;
+  --shadow: none;
+  --radius: 8px;
   font-family: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
 }
 
@@ -23,7 +23,7 @@
   --accent-strong: #aecbfa;
   --accent-soft: #202124;
   --danger: #f28b82;
-  --shadow: 0 4px 6px rgba(0,0,0,0.3);
+  --shadow: none;
 }
 
 * { box-sizing: border-box; }
@@ -122,7 +122,6 @@ input:focus, select:focus, textarea:focus {
   padding: 0 1.5rem;
   gap: 1.5rem;
   z-index: 100;
-  box-shadow: var(--shadow);
 }
 
 .app-brand-block {
@@ -202,7 +201,7 @@ input:focus, select:focus, textarea:focus {
   margin: 0;
   font-size: 1.2rem;
   font-weight: 700;
-  margin-left: 1rem;
+  margin-left: 1.5rem;
 }
 
 .menu-content {
@@ -260,7 +259,6 @@ input:focus, select:focus, textarea:focus {
   flex-direction: column;
   gap: 1.2rem;
   z-index: 10;
-  box-shadow: -2px 0 8px rgba(0,0,0,0.05);
 }
 
 .planner-panel h2 {
@@ -289,52 +287,58 @@ input:focus, select:focus, textarea:focus {
 .waypoint-item {
   background: var(--bg);
   border: 1px solid var(--line);
-  border-radius: 12px;
+  border-radius: 4px;
   padding: 0.8rem 1rem;
   display: flex;
   align-items: center;
   gap: 1rem;
   margin-bottom: 0.75rem;
-  transition: transform 0.2s, box-shadow 0.2s;
 }
 
-.waypoint-item:hover {
-  box-shadow: 0 4px 8px rgba(0,0,0,0.05);
-  transform: translateY(-1px);
-}
-
-.waypoint-handle {
+.drag-handle {
   cursor: grab;
   color: var(--muted);
+  background: transparent;
+  border: none;
+  padding: 0.5rem;
+  font-size: 1.2rem;
 }
 
-.waypoint-index {
-  background: var(--accent);
-  color: #fff;
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
+.waypoint-text {
+  flex: 1;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.8rem;
-  font-weight: 700;
-  flex-shrink: 0;
+  flex-direction: column;
 }
 
 .waypoint-label {
-  flex: 1;
   font-weight: 500;
 }
 
-.waypoint-remove {
+.waypoint-coords {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.waypoint-actions {
+  display: flex;
+  gap: 0.3rem;
+}
+
+.move-waypoint, .remove-waypoint {
   background: transparent;
   border: none;
   color: var(--muted);
   padding: 0.4rem;
+  min-width: unset;
+  border-radius: 4px;
 }
 
-.waypoint-remove:hover {
+.move-waypoint:hover, .remove-waypoint:hover {
+  background: var(--bg);
+  color: var(--ink);
+}
+
+.remove-waypoint:hover {
   color: var(--danger);
 }
 
@@ -380,20 +384,20 @@ input:focus, select:focus, textarea:focus {
 .route-stats-summary {
   display: flex;
   flex-wrap: wrap;
-  gap: 1.5rem;
+  gap: 2rem;
 }
 
 .elevation-chart {
   display: flex;
   flex-direction: column;
-  gap: 0.8rem;
+  gap: 1rem;
 }
 
 .elevation-chart-container {
-  height: 180px;
+  height: 300px;
   background: var(--bg);
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 4px;
   padding: 0.5rem;
 }
 
@@ -407,7 +411,7 @@ input:focus, select:focus, textarea:focus {
   border: 1px solid var(--line);
   border-radius: 8px;
   margin-top: 4px;
-  box-shadow: var(--shadow);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
   z-index: 2000;
   max-height: 240px;
   overflow-y: auto;
@@ -504,7 +508,6 @@ input:focus, select:focus, textarea:focus {
   align-items: center;
   justify-content: center;
   font-weight: 700;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.3);
   cursor: pointer;
 }
 
@@ -544,14 +547,6 @@ input:focus, select:focus, textarea:focus {
 
   .app-header {
     padding: 0 1rem;
-  }
-
-  .place-results {
-    position: fixed;
-    top: 250px;
-    left: 1rem;
-    right: 1rem;
-    z-index: 2000;
   }
 }
 

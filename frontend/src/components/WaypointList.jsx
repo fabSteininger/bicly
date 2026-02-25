@@ -1,4 +1,5 @@
-import { DndContext, PointerSensor, useSensor, useSensors, closestCenter } from '@dnd-kit/core'
+import { useMemo, useState } from 'react'
+import { DndContext, PointerSensor, useSensor, useSensors, closestCenter, DragOverlay } from '@dnd-kit/core'
 import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 
@@ -20,6 +21,8 @@ function SortableWaypoint({ waypoint, onRemove }) {
 
 export default function WaypointList({ waypoints, setWaypoints }) {
   const sensors = useSensors(useSensor(PointerSensor))
+  const [activeId, setActiveId] = useState(null)
+  const activeWaypoint = useMemo(() => waypoints.find((w) => w.id === activeId) ?? null, [activeId, waypoints])
 
   const onDragEnd = (event) => {
     const { active, over } = event
@@ -33,7 +36,16 @@ export default function WaypointList({ waypoints, setWaypoints }) {
   const onRemove = (id) => setWaypoints(waypoints.filter((w) => w.id !== id))
 
   return (
-    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      onDragStart={({ active }) => setActiveId(active.id)}
+      onDragEnd={(event) => {
+        onDragEnd(event)
+        setActiveId(null)
+      }}
+      onDragCancel={() => setActiveId(null)}
+    >
       <SortableContext items={waypoints.map((w) => w.id)} strategy={verticalListSortingStrategy}>
         <ul className="waypoint-list">
           {waypoints.map((waypoint) => (
@@ -41,6 +53,18 @@ export default function WaypointList({ waypoints, setWaypoints }) {
           ))}
         </ul>
       </SortableContext>
+      <DragOverlay>
+        {activeWaypoint && (
+          <div className="waypoint-item waypoint-overlay" aria-hidden="true">
+            <button className="drag" type="button">⋮⋮</button>
+            <div className="waypoint-text">
+              <span>{activeWaypoint.label}</span>
+              <small>{activeWaypoint.lat.toFixed(5)}, {activeWaypoint.lon.toFixed(5)}</small>
+            </div>
+            <button type="button">✕</button>
+          </div>
+        )}
+      </DragOverlay>
     </DndContext>
   )
 }

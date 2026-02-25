@@ -264,6 +264,11 @@ export default function App() {
   }, [activeProfile, brouterPoints, waypoints.length])
 
   useEffect(() => {
+    if (!latestGpx) return
+    setShowRouteDetails(false)
+  }, [latestGpx])
+
+  useEffect(() => {
     const query = placeQuery.trim()
     if (query.length < 3) return setPlaceResults([])
     const controller = new AbortController()

@@ -217,6 +217,7 @@ a { color: var(--accent); }
   backdrop-filter: blur(8px);
   box-shadow: 0 14px 30px rgba(18, 44, 84, 0.14);
   max-height: min(45vh, 360px);
+  padding-bottom: env(safe-area-inset-bottom, 0);
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -241,6 +242,8 @@ a { color: var(--accent); }
 .route-bottom-sheet .route-details {
   margin: 0.7rem;
   overflow: auto;
+  min-height: 0;
+  flex: 1;
 }
 
 
@@ -330,6 +333,12 @@ a { color: var(--accent); }
   cursor: grab;
   padding: 0;
 }
+
+.waypoint-overlay {
+  width: min(100%, 420px);
+  box-shadow: 0 8px 18px rgba(18, 44, 84, 0.18);
+}
+
 
 .upload {
   display: flex;
@@ -516,7 +525,7 @@ a { color: var(--accent); }
   }
 
   .route-bottom-sheet {
-    max-height: min(52vh, 360px);
+    max-height: min(62vh, 520px);
   }
 }
 

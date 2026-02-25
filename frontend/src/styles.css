@@ -146,6 +146,10 @@ button.active { background: linear-gradient(160deg, var(--accent), var(--accent-
 }
 .sheet-expand-button:hover { background: var(--accent-soft); }
 
+.app-menu-button .button-label {
+  display: none;
+}
+
 /* --- Planner Layout --- */
 
 .planner-layout {
@@ -232,6 +236,7 @@ button.active { background: linear-gradient(160deg, var(--accent), var(--accent-
 
   .app-brand-block p:not(.force-show) { display: none; }
   .sheet-expand-button .button-label { display: none; }
+
 }
 
 /* --- Menu Content --- */
@@ -248,8 +253,8 @@ button.active { background: linear-gradient(160deg, var(--accent), var(--accent-
 @media (min-width: 769px) {
   .planner-mobile-close { display: none; }
 }
-.menu-content { display: flex; flex-direction: column; gap: 0.5rem; padding: 1rem; }
-.menu-content button { text-align: left; padding: 0.8rem 1rem; }
+.menu-content { display: flex; flex-direction: column; gap: 0.5rem; padding: 1.5rem; }
+.menu-content button { text-align: left; padding: 1rem 1.5rem; }
 
 /* --- Route Details (Bottom Sheet) --- */
 .route-bottom-sheet {
@@ -290,12 +295,25 @@ button.active { background: linear-gradient(160deg, var(--accent), var(--accent-
 }
 .route-bottom-sheet.closed .route-bottom-sheet-toggle { border-bottom: none; }
 
+.route-bottom-sheet-empty {
+  padding: 1rem;
+  margin: 0;
+  color: var(--muted);
+}
+
 .route-details {
   padding: 1rem;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+}
+
+.route-stats-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  font-size: 0.95rem;
 }
 
 /* --- Components --- */
@@ -329,15 +347,6 @@ button.active { background: linear-gradient(160deg, var(--accent), var(--accent-
 
 .elevation-chart-container { height: 160px; border: 1px solid var(--line); border-radius: 8px; background: #f9fbff; transition: height 0.3s ease; }
 
-.elevation-chart.expanded .elevation-chart-container {
-  height: 400px;
-}
-
-@media (max-width: 768px) {
-  .elevation-chart.expanded .elevation-chart-container {
-    height: 300px;
-  }
-}
 
 .library-page, .settings-page, .legal-page { padding: 2rem; overflow-y: auto; max-width: 1000px; margin: 0 auto; width: 100%; display: flex; flex-direction: column; gap: 1.5rem; }
 
@@ -348,8 +357,34 @@ button.active { background: linear-gradient(160deg, var(--accent), var(--accent-
 .quick-actions button { flex: 1; font-size: 0.85rem; }
 
 .place-results { border: 1px solid var(--line); border-radius: 10px; background: #fff; padding: 0.5rem; max-height: 200px; overflow-y: auto; }
-.place-result { text-align: left; width: 100%; border: none; border-bottom: 1px solid #eee; border-radius: 0; padding: 0.5rem; }
+.place-result { text-align: left; width: 100%; border: none; border-bottom: 1px solid #eee; border-radius: 0; padding: 0.8rem 1rem; min-height: 3rem; }
 .place-result:last-child { border-bottom: none; }
+
+/* Mobile Adjustments Overrides */
+@media (max-width: 768px) {
+  .route-bottom-sheet {
+    position: static;
+    width: 100%;
+    margin: 0;
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+    border-bottom: none;
+    max-height: none;
+    box-shadow: none;
+    background: #fff;
+    backdrop-filter: none;
+  }
+
+  .map-stack {
+    overflow-y: auto;
+  }
+
+  .map {
+    flex: none;
+    height: 300px; /* Give map a fixed height on mobile so details can follow below */
+  }
+}
 
 .custom-profile-area {
   width: 100%;

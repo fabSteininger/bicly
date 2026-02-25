@@ -81,6 +81,13 @@ const emptyRouteGeoJson = { type: 'FeatureCollection', features: [] }
 
 const emptyRouteStats = { distanceKm: 0, ascentM: 0, descentM: 0, rawSummary: '', elevationProfile: [] }
 
+const btnBase = "px-4 py-2 rounded-xl transition-all active:scale-95 disabled:opacity-50 disabled:active:scale-100"
+const btnPrimary = `${btnBase} bg-blue-600 text-white hover:bg-blue-700 shadow-sm`
+const btnSecondary = `${btnBase} bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700`
+const btnDanger = `${btnBase} border border-red-200 dark:border-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20`
+const inputBase = "w-full p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+const labelBase = "block text-sm font-bold mb-1 text-slate-500 dark:text-slate-400 uppercase tracking-wider"
+
 const HamburgerIcon = () => (
   <svg viewBox="0 0 122.88 95.95" aria-hidden="true" focusable="false">
     <path d="M8.94,0h105c4.92,0,8.94,4.02,8.94,8.94l0,0c0,4.92-4.02,8.94-8.94,8.94h-105C4.02,17.88,0,13.86,0,8.94l0,0 C0,4.02,4.02,0,8.94,0L8.94,0z M8.94,78.07h105c4.92,0,8.94,4.02,8.94,8.94l0,0c0,4.92-4.02,8.94-8.94,8.94h-105 C4.02,95.95,0,91.93,0,87.01l0,0C0,82.09,4.02,78.07,8.94,78.07L8.94,78.07z M8.94,39.03h105c4.92,0,8.94,4.02,8.94,8.94l0,0 c0,4.92-4.02,8.94-8.94,8.94h-105C4.02,56.91,0,52.89,0,47.97l0,0C0,43.06,4.02,39.03,8.94,39.03L8.94,39.03z" />
@@ -180,7 +187,7 @@ const TEXT = {
   },
 }
 
-const ElevationChart = ({ profile, title, legend, hoverHint, activeDistanceM, onHoverPoint, onLeave, t }) => {
+const ElevationChart = ({ profile, title, legend, hoverHint, activeDistanceM, onHoverPoint, onLeave, t, isDarkMode }) => {
   if (!profile.length) return null
 
   const totalDistM = profile[profile.length - 1].distanceM
@@ -205,7 +212,7 @@ const ElevationChart = ({ profile, title, legend, hoverHint, activeDistanceM, on
     datasets: [{
       data: displayProfile.map((p) => ({ x: p.distanceM, y: p.elevationM })),
       fill: true,
-      backgroundColor: 'rgba(168, 200, 255, 0.4)',
+      backgroundColor: isDarkMode ? 'rgba(30, 111, 235, 0.2)' : 'rgba(168, 200, 255, 0.4)',
       borderColor: '#1f6feb',
       borderWidth: 2,
       pointRadius: 0,
@@ -249,12 +256,17 @@ const ElevationChart = ({ profile, title, legend, hoverHint, activeDistanceM, on
           callback: (val) => `${(val / 1000).toFixed(1)} km`,
           maxTicksLimit: 6,
           includeBounds: true,
+          color: isDarkMode ? '#94a3b8' : '#64748b',
         },
         grid: { display: false },
       },
       y: {
         ticks: {
           callback: (val) => `${val}m`,
+          color: isDarkMode ? '#94a3b8' : '#64748b',
+        },
+        grid: {
+          color: isDarkMode ? 'rgba(148, 163, 184, 0.1)' : 'rgba(100, 116, 139, 0.1)',
         },
       },
     },
@@ -288,15 +300,17 @@ const ElevationChart = ({ profile, title, legend, hoverHint, activeDistanceM, on
   }
 
   return (
-    <section className="elevation-chart" aria-label={title}>
-      <div className="elevation-chart-header">
-        <h4>{title}</h4>
+    <section className="p-2" aria-label={title}>
+      <div className="flex justify-between items-center mb-1">
+        <h4 className="text-sm font-bold uppercase tracking-wider text-slate-500">{title}</h4>
       </div>
-      <div className="elevation-chart-container">
+      <div className="h-40 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/50 p-1">
         <Line data={data} options={options} />
       </div>
-      <small>{legend}</small>
-      <small>{hoverHint}</small>
+      <div className="flex justify-between mt-1 px-1">
+        <small className="text-[10px] text-slate-400">{legend}</small>
+        <small className="text-[10px] text-slate-400">{hoverHint}</small>
+      </div>
     </section>
   )
 }
@@ -409,8 +423,19 @@ const ensureRouteLayer = (map) => {
 export default function App() {
   const plannerDraft = useMemo(() => readPlannerDraft(), [])
   const [lang, setLang] = useState('de')
+  const [isDarkMode, setIsDarkMode] = useState(() => localStorage.getItem('bicly_theme') === 'dark')
   const t = TEXT[lang]
   const mapRef = useRef(null)
+
+  useEffect(() => {
+    if (isDarkMode) {
+      document.documentElement.classList.add('dark')
+      localStorage.setItem('bicly_theme', 'dark')
+    } else {
+      document.documentElement.classList.remove('dark')
+      localStorage.setItem('bicly_theme', 'light')
+    }
+  }, [isDarkMode])
   const [map, setMap] = useState(null)
   const mapMarkers = useRef([])
   const [activePage, setActivePage] = useState('planner')
@@ -482,6 +507,19 @@ export default function App() {
     setIsExternalRoute(false)
     setWaypoints((prev) => [...prev, { id: crypto.randomUUID(), label: label || `Pin ${prev.length + 1}`, lon: Number(lon.toFixed(6)), lat: Number(lat.toFixed(6)) }])
   }
+
+  const moveWaypoint = (index, direction) => {
+    setWaypoints((prev) => {
+      const newWaypoints = [...prev]
+      const nextIndex = index + direction
+      if (nextIndex < 0 || nextIndex >= newWaypoints.length) return prev
+      const temp = newWaypoints[index]
+      newWaypoints[index] = newWaypoints[nextIndex]
+      newWaypoints[nextIndex] = temp
+      return newWaypoints
+    })
+    setIsExternalRoute(false)
+  }
   const brouterPoints = useMemo(() => waypoints.map((p) => `${p.lon},${p.lat}`).join('|'), [waypoints])
 
   useEffect(() => {
@@ -536,8 +574,13 @@ export default function App() {
     mapMarkers.current = []
     waypoints.forEach((point, index) => {
       const element = document.createElement('div')
-      element.className = 'waypoint-marker'
+      element.className = 'waypoint-marker cursor-pointer'
       element.textContent = String(index + 1)
+      element.addEventListener('click', (e) => {
+        e.stopPropagation()
+        setWaypoints((prev) => prev.filter((w) => w.id !== point.id))
+        setIsExternalRoute(false)
+      })
       mapMarkers.current.push(new maplibregl.Marker({ element }).setLngLat([point.lon, point.lat]).addTo(map))
     })
   }, [map, waypoints])
@@ -688,146 +731,244 @@ export default function App() {
   }
 
   return (
-    <div className={`app-shell ${userMenuOpen ? 'menu-open' : ''}`}>
-      <aside className={`account-menu ${userMenuOpen ? 'open' : ''}`}>
-        <div className="menu-header">
-          <h3>{t.appMenu}</h3>
-          <button type="button" className="menu-close" onClick={() => setUserMenuOpen(false)}>✕</button>
+    <div className={`flex h-screen w-screen overflow-hidden relative bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 ${userMenuOpen ? 'menu-open' : ''}`}>
+      <aside className={`fixed inset-y-0 left-0 w-72 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 z-[300] flex flex-col transition-transform duration-300 transform ${userMenuOpen ? 'translate-x-0' : '-translate-x-full'} md:relative md:translate-x-0 ${userMenuOpen ? '' : 'md:ml-[-288px]'}`}>
+        <div className="flex justify-between items-center p-4 border-b border-slate-200 dark:border-slate-700">
+          <h3 className="text-lg font-bold">{t.appMenu}</h3>
+          <button type="button" className="text-2xl" onClick={() => setUserMenuOpen(false)}>✕</button>
         </div>
-        <div className="menu-content">
-          <button className={activePage === 'planner' ? 'active' : ''} onClick={() => { setActivePage('planner'); setUserMenuOpen(false) }}>{t.planner}</button>
-          <button className={activePage === 'library' ? 'active' : ''} onClick={() => { setActivePage('library'); setUserMenuOpen(false) }}>{t.library}</button>
-          <button className={activePage === 'settings' ? 'active' : ''} onClick={() => { setActivePage('settings'); setUserMenuOpen(false) }}>{t.settings}</button>
-          <button className={activePage === 'privacy' ? 'active' : ''} onClick={() => { setActivePage('privacy'); setUserMenuOpen(false) }}>{t.privacyPolicy}</button>
-          <button className={activePage === 'impressum' ? 'active' : ''} onClick={() => { setActivePage('impressum'); setUserMenuOpen(false) }}>{t.impressum}</button>
+        <div className="flex flex-col gap-1 p-4">
+          {[
+            { id: 'planner', label: t.planner },
+            { id: 'library', label: t.library },
+            { id: 'settings', label: t.settings },
+            { id: 'privacy', label: t.privacyPolicy },
+            { id: 'impressum', label: t.impressum },
+          ].map((item) => (
+            <button
+              key={item.id}
+              className={`text-left px-4 py-3 rounded-xl transition-colors ${activePage === item.id ? 'bg-blue-600 text-white' : 'hover:bg-slate-100 dark:hover:bg-slate-700'}`}
+              onClick={() => { setActivePage(item.id); setUserMenuOpen(false) }}
+            >
+              {item.label}
+            </button>
+          ))}
         </div>
       </aside>
 
-      <main className="main-content">
-        <header className="app-header">
-          <button type="button" className="icon-button sheet-expand-button app-menu-button" aria-label={t.appMenu} onClick={() => setUserMenuOpen((prev) => !prev)}>
-            <span className="icon-only"><HamburgerIcon /></span>
-            <span className="button-label">{t.appMenu}</span>
+      <main className="flex-1 flex flex-col min-w-0 relative">
+        <header className="flex items-center justify-between gap-3 p-2 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 z-[100]">
+          <button type="button" className="flex items-center justify-center w-10 h-10 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors" aria-label={t.appMenu} onClick={() => setUserMenuOpen((prev) => !prev)}>
+            <span className="w-6 h-6"><HamburgerIcon /></span>
           </button>
-          <div className="app-brand-block" onClick={() => setShowSubtitle((prev) => !prev)} style={{ cursor: 'pointer' }}>
-            <div className="app-brand">{t.appTitle}</div>
-            <p className={showSubtitle ? 'force-show' : ''}>{t.appSub}</p>
+          <div className="flex-1 min-w-0" onClick={() => setShowSubtitle((prev) => !prev)} style={{ cursor: 'pointer' }}>
+            <div className="text-xl font-extrabold truncate">{t.appTitle}</div>
+            <p className={`text-xs text-slate-500 dark:text-slate-400 truncate transition-all duration-300 ${showSubtitle ? 'max-h-10 opacity-100' : 'max-h-0 opacity-0 md:max-h-10 md:opacity-100'}`}>{t.appSub}</p>
           </div>
-          <div className="topbar-controls">
-            {activePage === 'planner' && <button type="button" className="icon-button sheet-expand-button" aria-expanded={plannerPanelOpen} aria-label={plannerPanelOpen ? t.closePlanner : t.openRouteTools} onClick={(e) => { e.stopPropagation(); setPlannerPanelOpen((prev) => !prev) }}><span className="icon-only">{plannerPanelOpen ? <ArrowUpIcon /> : <ArrowDownIcon />}</span><span className="button-label">{plannerPanelOpen ? t.closePlanner : t.openPlanner}</span></button>}
+          <div className="flex items-center gap-2">
+            <button type="button" className="flex items-center justify-center w-10 h-10 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors text-xl" onClick={() => setIsDarkMode(!isDarkMode)} aria-label="Toggle dark mode">
+              {isDarkMode ? '🌞' : '🌙'}
+            </button>
+            {activePage === 'planner' && (
+              <button
+                type="button"
+                className="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-700 font-bold text-sm hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
+                aria-expanded={plannerPanelOpen}
+                aria-label={plannerPanelOpen ? t.closePlanner : t.openRouteTools}
+                onClick={(e) => { e.stopPropagation(); setPlannerPanelOpen((prev) => !prev) }}
+              >
+                <span className="w-4 h-4">{plannerPanelOpen ? <ArrowUpIcon /> : <ArrowDownIcon />}</span>
+                <span className="hidden md:inline">{plannerPanelOpen ? t.closePlanner : t.openPlanner}</span>
+              </button>
+            )}
           </div>
         </header>
-        {message && <p className="status info">{message}</p>}
+        {message && (
+          <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[1000] px-4 py-2 bg-blue-600 text-white rounded-full shadow-2xl animate-bounce">
+            {message}
+          </div>
+        )}
 
-        {activePage === 'planner' && <section className={`planner-layout ${plannerPanelOpen ? '' : 'panel-collapsed'}`}>
-        <section className="map-stack">
-          <section ref={mapRef} className="map" onClick={() => setPlannerPanelOpen(false)}>
-            <button type="button" className="mobile-planner-toggle icon-button sheet-expand-button" aria-expanded={plannerPanelOpen} aria-label={plannerPanelOpen ? t.closePlanner : t.openRouteTools} onClick={(e) => { e.stopPropagation(); setPlannerPanelOpen((prev) => !prev) }}>{plannerPanelOpen ? <ArrowDownIcon /> : <ArrowUpIcon />}</button>
+        {activePage === 'planner' && <section className="flex-1 flex min-h-0 relative">
+        <section className="flex-1 flex flex-col min-w-0 relative">
+          <section ref={mapRef} className="flex-1 min-h-0 relative" onClick={() => setPlannerPanelOpen(false)}>
+            <button type="button" className="md:hidden absolute top-4 right-4 z-[100] p-2 bg-white dark:bg-slate-800 rounded-full shadow-lg" aria-expanded={plannerPanelOpen} aria-label={plannerPanelOpen ? t.closePlanner : t.openRouteTools} onClick={(e) => { e.stopPropagation(); setPlannerPanelOpen((prev) => !prev) }}>{plannerPanelOpen ? <ArrowDownIcon /> : <ArrowUpIcon />}</button>
           </section>
-          <section className={`route-bottom-sheet ${showRouteDetails ? 'open' : 'closed'}`}>
+          <section className={`flex flex-col overflow-hidden bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 transition-all duration-300 ${showRouteDetails ? 'max-h-[60%]' : 'max-h-12'}`}>
             <button
               type="button"
-              className="route-bottom-sheet-toggle"
+              className="flex justify-between items-center px-4 h-12 w-full font-bold hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors disabled:opacity-50"
               aria-expanded={showRouteDetails}
               aria-label={showRouteDetails ? t.closeRouteDetailsSheet : t.openRouteDetailsSheet}
               onClick={() => setShowRouteDetails((prev) => !prev)}
               disabled={!latestGpx}
             >
               <span>{t.routeDetails}</span>
-              <span className="icon-small" aria-hidden="true">{showRouteDetails ? <ArrowDownIcon /> : <ArrowUpIcon />}</span>
+              <span className="w-5 h-5" aria-hidden="true">{showRouteDetails ? <ArrowDownIcon /> : <ArrowUpIcon />}</span>
             </button>
           {showRouteDetails && latestGpx && (
-            <section className="route-details">
-              <div className="route-stats-summary">
-                <span><strong>{t.distance}:</strong> {routeStats.distanceKm.toFixed(1)} km</span>
-                <span><strong>{t.ascent}:</strong> {Math.round(routeStats.ascentM)} m</span>
-                <span><strong>{t.descent}:</strong> {Math.round(routeStats.descentM)} m</span>
+            <section className="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
+              <div className="flex flex-wrap gap-4 text-sm font-medium">
+                <span className="bg-slate-100 dark:bg-slate-700 px-3 py-1 rounded-full"><strong>{t.distance}:</strong> {routeStats.distanceKm.toFixed(1)} km</span>
+                <span className="bg-slate-100 dark:bg-slate-700 px-3 py-1 rounded-full"><strong>{t.ascent}:</strong> {Math.round(routeStats.ascentM)} m</span>
+                <span className="bg-slate-100 dark:bg-slate-700 px-3 py-1 rounded-full"><strong>{t.descent}:</strong> {Math.round(routeStats.descentM)} m</span>
               </div>
-              {routeStats.rawSummary && <p>{routeStats.rawSummary}</p>}
-              <ElevationChart profile={routeStats.elevationProfile} title={t.elevationProfile} legend={t.steepLegend} hoverHint={t.elevationFocusHint} activeDistanceM={activeElevationPoint?.distanceM} onHoverPoint={setActiveElevationPoint} onLeave={() => setActiveElevationPoint(null)} t={t} />
+              {routeStats.rawSummary && <p className="text-sm text-slate-600 dark:text-slate-400 italic">{routeStats.rawSummary}</p>}
+              <ElevationChart profile={routeStats.elevationProfile} title={t.elevationProfile} legend={t.steepLegend} hoverHint={t.elevationFocusHint} activeDistanceM={activeElevationPoint?.distanceM} onHoverPoint={setActiveElevationPoint} onLeave={() => setActiveElevationPoint(null)} t={t} isDarkMode={isDarkMode} />
             </section>
           )}
-            {!latestGpx && <p className="route-bottom-sheet-empty">{t.routeDetailsUnavailable}</p>}
+            {!latestGpx && <p className="p-4 text-sm text-slate-500 italic">{t.routeDetailsUnavailable}</p>}
           </section>
         </section>
-        <aside className="panel planner-panel">
-        <div className="planner-panel-head"><h2>{t.plannerHeading}</h2><button type="button" className="planner-mobile-close" aria-label={t.closePlanner} onClick={() => setPlannerPanelOpen(false)}>✕</button></div><p>{t.addPinsHint}</p>
-        <label>{t.profile}</label>
-        <select value={activeProfile} onChange={(e) => { setActiveProfile(e.target.value); setIsExternalRoute(false); }}>
-          {profiles.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-          <option value="custom">{t.customProfile}</option>
-        </select>
-        {activeProfile === 'custom' && (
-          <textarea
-            className="custom-profile-area"
-            value={customProfileContent}
-            onChange={(e) => setCustomProfileContent(e.target.value)}
-            placeholder={t.customProfilePlaceholder}
-            rows={5}
-          />
-        )}
-        <label>{t.title}</label><input value={title} onChange={(e) => setTitle(e.target.value)} />
-        <label>{t.findPlace}</label><input value={placeQuery} onChange={(e) => setPlaceQuery(e.target.value)} placeholder={t.placeSearchPlaceholder} />
-        {(searchingPlaces || placeResults.length > 0 || (placeQuery.trim().length >= 3 && !placeResults.length)) && <div className="place-results">{searchingPlaces && <small>{t.searchingPlaces}</small>}{!searchingPlaces && !placeResults.length && <small>{t.noPlacesFound}</small>}{!searchingPlaces && placeResults.map((place) => <button key={place.id} type="button" className="place-result" onClick={() => addWaypoint(place.label, place.lon, place.lat)}>{place.label}</button>)}</div>}
-        <WaypointList waypoints={waypoints} setWaypoints={(val) => { setWaypoints(val); setIsExternalRoute(false); }} />
-        <button onClick={() => { setWaypoints([]); setIsExternalRoute(false); }}>{t.clearPins}</button>
-        <button onClick={saveGeneratedRoute} disabled={!latestGpx}>{t.saveGenerated}</button>
+        <aside className={`fixed inset-0 z-[400] bg-white dark:bg-slate-800 flex flex-col p-4 overflow-y-auto transition-transform duration-300 ${plannerPanelOpen ? 'translate-y-0' : 'translate-y-full'} md:static md:translate-y-0 md:w-96 md:border-l md:border-slate-200 md:dark:border-slate-700 ${plannerPanelOpen ? '' : 'md:mr-[-384px]'}`}>
+        <div className="flex justify-between items-center mb-4 pb-2 border-b border-slate-200 dark:border-slate-700">
+          <h2 className="text-xl font-bold">{t.plannerHeading}</h2>
+          <button type="button" className="md:hidden text-2xl" aria-label={t.closePlanner} onClick={() => setPlannerPanelOpen(false)}>✕</button>
+        </div>
+        <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">{t.addPinsHint}</p>
+        <div className="flex flex-col gap-4">
+          <div>
+            <label className={labelBase}>{t.profile}</label>
+            <select className={inputBase} value={activeProfile} onChange={(e) => { setActiveProfile(e.target.value); setIsExternalRoute(false); }}>
+              {profiles.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+              <option value="custom">{t.customProfile}</option>
+            </select>
+            {activeProfile === 'custom' && (
+              <textarea
+                className={`${inputBase} mt-2 font-mono text-xs`}
+                value={customProfileContent}
+                onChange={(e) => setCustomProfileContent(e.target.value)}
+                placeholder={t.customProfilePlaceholder}
+                rows={5}
+              />
+            )}
+          </div>
+          <div>
+            <label className={labelBase}>{t.title}</label>
+            <input className={inputBase} value={title} onChange={(e) => setTitle(e.target.value)} />
+          </div>
+          <div className="relative">
+            <label className={labelBase}>{t.findPlace}</label>
+            <input className={inputBase} value={placeQuery} onChange={(e) => setPlaceQuery(e.target.value)} placeholder={t.placeSearchPlaceholder} />
+            {(searchingPlaces || placeResults.length > 0 || (placeQuery.trim().length >= 3 && !placeResults.length)) && (
+              <div className="absolute top-full left-0 right-0 z-[500] mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl max-h-60 overflow-y-auto">
+                {searchingPlaces && <div className="p-3 text-sm text-slate-500 animate-pulse">{t.searchingPlaces}</div>}
+                {!searchingPlaces && !placeResults.length && <div className="p-3 text-sm text-slate-500">{t.noPlacesFound}</div>}
+                {!searchingPlaces && placeResults.map((place) => (
+                  <button key={place.id} type="button" className="w-full text-left p-3 text-sm hover:bg-slate-100 dark:hover:bg-slate-700 border-b border-slate-100 dark:border-slate-700 last:border-0" onClick={() => addWaypoint(place.label, place.lon, place.lat)}>
+                    {place.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+        <WaypointList waypoints={waypoints} setWaypoints={(val) => { setWaypoints(val); setIsExternalRoute(false); }} onMove={moveWaypoint} />
+        <div className="flex flex-col gap-2 mt-auto">
+          <button className={btnSecondary} onClick={() => { setWaypoints([]); setIsExternalRoute(false); }}>{t.clearPins}</button>
+          <button className={btnPrimary} onClick={saveGeneratedRoute} disabled={!latestGpx}>{t.saveGenerated}</button>
+        </div>
         {latestGpx && <p className="status info inline">{t.routeReady}</p>}
       </aside></section>}
 
-      {activePage === 'library' && <section className="library-page"><h2>{t.libraryHeading}</h2>
-        <div className="panel upload-panel"><h3>{t.uploadSection}</h3><label>{t.uploadRouteTitle}</label><input value={uploadTitle} onChange={(e) => setUploadTitle(e.target.value)} />
-          <label className="upload">{t.uploadGpx}<input type="file" accept=".gpx,application/gpx+xml" onChange={(e) => setUploadGpxFile(e.target.files?.[0] ?? null)} /></label>
-          <button type="button" onClick={uploadGpx} disabled={!uploadGpxFile}>{t.uploadRouteButton}</button></div>
-        <div className="panel">{!savedRoutes.length && <p>{t.noSaved}</p>}
-          {savedRoutes.map((route) => <article className="route-card" key={route.id}><div className="route-card-head"><strong>{route.title}</strong></div><div className="quick-actions"><button onClick={() => openRoute(route)}>{t.downloadGpx}</button><button onClick={() => loadRouteToMap(route)}>{t.loadOnMap}</button><button onClick={() => setSavedRoutes((prev) => prev.filter((x) => x.id !== route.id))}>{t.remove}</button></div></article>)}
+      {activePage === 'library' && <section className="flex-1 overflow-y-auto p-4 md:p-8 max-w-5xl mx-auto w-full flex flex-col gap-6">
+        <h2 className="text-3xl font-bold">{t.libraryHeading}</h2>
+        <div className="p-6 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-3xl shadow-sm flex flex-col gap-4">
+          <h3 className="text-xl font-bold">{t.uploadSection}</h3>
+          <div>
+            <label className={labelBase}>{t.uploadRouteTitle}</label>
+            <input className={inputBase} value={uploadTitle} onChange={(e) => setUploadTitle(e.target.value)} />
+          </div>
+          <div>
+            <label className={labelBase}>{t.uploadGpx}</label>
+            <input className={inputBase} type="file" accept=".gpx,application/gpx+xml" onChange={(e) => setUploadGpxFile(e.target.files?.[0] ?? null)} />
+          </div>
+          <button className={btnPrimary} type="button" onClick={uploadGpx} disabled={!uploadGpxFile}>{t.uploadRouteButton}</button>
+        </div>
+        <div className="p-6 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-3xl shadow-sm flex flex-col gap-4">
+          {!savedRoutes.length && <p className="text-slate-500 italic">{t.noSaved}</p>}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {savedRoutes.map((route) => (
+              <article className="p-4 border border-slate-200 dark:border-slate-700 rounded-2xl bg-slate-50 dark:bg-slate-900/50 flex flex-col gap-4" key={route.id}>
+                <div className="font-bold text-lg">{route.title}</div>
+                <div className="flex flex-wrap gap-2">
+                  <button className={`${btnSecondary} text-sm py-1.5`} onClick={() => openRoute(route)}>{t.downloadGpx}</button>
+                  <button className={`${btnSecondary} text-sm py-1.5`} onClick={() => loadRouteToMap(route)}>{t.loadOnMap}</button>
+                  <button className={`${btnDanger} text-sm py-1.5`} onClick={() => setSavedRoutes((prev) => prev.filter((x) => x.id !== route.id))}>{t.remove}</button>
+                </div>
+              </article>
+            ))}
+          </div>
         </div>
       </section>}
 
-      {activePage === 'privacy' && <section className="panel legal-page"><h2>{t.privacyHeading}</h2><p>We process route planning data only in your browser and keep your saved GPX files in local storage on this device.</p><p>When generating routes and searching places, requests are sent to external services (BRouter and Nominatim/OpenStreetMap) to return route and search results.</p><p>No account is required and no central profile storage is used in this demo.</p><button type="button" onClick={() => setActivePage('planner')}>{t.backToPlanner}</button></section>}
+      {activePage === 'privacy' && <section className="flex-1 overflow-y-auto p-4 md:p-8 max-w-3xl mx-auto w-full flex flex-col gap-6">
+        <div className="p-8 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-3xl shadow-sm flex flex-col gap-4">
+          <h2 className="text-3xl font-bold mb-4">{t.privacyHeading}</h2>
+          <p>We process route planning data only in your browser and keep your saved GPX files in local storage on this device.</p>
+          <p>When generating routes and searching places, requests are sent to external services (BRouter and Nominatim/OpenStreetMap) to return route and search results.</p>
+          <p>No account is required and no central profile storage is used in this demo.</p>
+          <button className={`${btnPrimary} mt-4 self-start`} type="button" onClick={() => setActivePage('planner')}>{t.backToPlanner}</button>
+        </div>
+      </section>}
 
-      {activePage === 'settings' && <section className="settings-page">
-        <h2>{t.settingsHeading}</h2>
-        <div className="panel">
-          <h3>{t.generalSettings}</h3>
-          <label>{t.language}</label>
-          <select value={lang} onChange={(e) => setLang(e.target.value)}>
-            <option value="en">English</option>
-            <option value="de">Deutsch</option>
-          </select>
+      {activePage === 'settings' && <section className="flex-1 overflow-y-auto p-4 md:p-8 max-w-3xl mx-auto w-full flex flex-col gap-6">
+        <h2 className="text-3xl font-bold">{t.settingsHeading}</h2>
+        <div className="p-6 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-3xl shadow-sm flex flex-col gap-4">
+          <h3 className="text-xl font-bold">{t.generalSettings}</h3>
+          <div>
+            <label className={labelBase}>{t.language}</label>
+            <select className={inputBase} value={lang} onChange={(e) => setLang(e.target.value)}>
+              <option value="en">English</option>
+              <option value="de">Deutsch</option>
+            </select>
+          </div>
         </div>
 
-        <div className="panel">
-          <h3>{t.routingProfiles}</h3>
-          <div className="add-profile-form">
-            <label>{t.profileName}</label>
-            <input value={newProfileName} onChange={(e) => setNewProfileName(e.target.value)} placeholder="e.g. My Custom MTB" />
-            <label>{t.profileContent}</label>
-            <textarea
-              className="custom-profile-area"
-              value={newProfileContent}
-              onChange={(e) => setNewProfileContent(e.target.value)}
-              placeholder={t.customProfilePlaceholder}
-              rows={5}
-            />
+        <div className="p-6 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-3xl shadow-sm flex flex-col gap-4">
+          <h3 className="text-xl font-bold">{t.routingProfiles}</h3>
+          <div className="flex flex-col gap-4">
+            <div>
+              <label className={labelBase}>{t.profileName}</label>
+              <input className={inputBase} value={newProfileName} onChange={(e) => setNewProfileName(e.target.value)} placeholder="e.g. My Custom MTB" />
+            </div>
+            <div>
+              <label className={labelBase}>{t.profileContent}</label>
+              <textarea
+                className={`${inputBase} font-mono text-xs`}
+                value={newProfileContent}
+                onChange={(e) => setNewProfileContent(e.target.value)}
+                placeholder={t.customProfilePlaceholder}
+                rows={5}
+              />
+            </div>
             <input type="file" accept=".brf" onChange={handleProfileUpload} />
-            <button onClick={addCustomProfile} disabled={!newProfileName || !newProfileContent}>{t.addProfile}</button>
+            <button className={btnPrimary} onClick={addCustomProfile} disabled={!newProfileName || !newProfileContent}>{t.addProfile}</button>
           </div>
 
-          <div className="saved-profiles-list">
+          <div className="mt-4 border-t border-slate-100 dark:border-slate-700 pt-4 flex flex-col gap-2">
             {customProfiles.map((p) => (
-              <div key={p.id} className="saved-profile-item">
-                <span>{p.name}</span>
-                <button className="danger" onClick={() => deleteCustomProfile(p.id)}>{t.deleteProfile}</button>
+              <div key={p.id} className="flex justify-between items-center p-3 bg-slate-50 dark:bg-slate-900/50 rounded-xl">
+                <span className="font-medium">{p.name}</span>
+                <button className={btnDanger} onClick={() => deleteCustomProfile(p.id)}>{t.deleteProfile}</button>
               </div>
             ))}
           </div>
         </div>
 
-        <button type="button" onClick={() => setActivePage('planner')}>{t.backToPlanner}</button>
+        <button className={`${btnSecondary} self-start`} type="button" onClick={() => setActivePage('planner')}>{t.backToPlanner}</button>
       </section>}
 
-        {activePage === 'impressum' && <section className="panel legal-page"><h2>{t.impressumHeading}</h2><p>Bicly demo application.</p><p>Responsible for content: Bicly Project Team.</p><p>Contact: hello@bicly.local</p><p>Address: Example Street 1, 12345 Demo City</p><button type="button" onClick={() => setActivePage('planner')}>{t.backToPlanner}</button></section>}
+      {activePage === 'impressum' && <section className="flex-1 overflow-y-auto p-4 md:p-8 max-w-3xl mx-auto w-full flex flex-col gap-6">
+        <div className="p-8 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-3xl shadow-sm flex flex-col gap-4">
+          <h2 className="text-3xl font-bold mb-4">{t.impressumHeading}</h2>
+          <p>Bicly demo application.</p>
+          <p>Responsible for content: Bicly Project Team.</p>
+          <p>Contact: hello@bicly.local</p>
+          <p>Address: Example Street 1, 12345 Demo City</p>
+          <button className={`${btnPrimary} mt-4 self-start`} type="button" onClick={() => setActivePage('planner')}>{t.backToPlanner}</button>
+        </div>
+      </section>}
       </main>
     </div>
   )

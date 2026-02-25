@@ -1,70 +1,59 @@
-import { useMemo, useState } from 'react'
-import { DndContext, PointerSensor, useSensor, useSensors, closestCenter, DragOverlay } from '@dnd-kit/core'
-import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable'
-import { CSS } from '@dnd-kit/utilities'
+import React from 'react'
 
-function SortableWaypoint({ waypoint, onRemove }) {
-  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: waypoint.id })
-  const style = { transform: CSS.Transform.toString(transform), transition }
-
+function WaypointItem({ waypoint, index, isFirst, isLast, onRemove, onMove }) {
   return (
-    <li ref={setNodeRef} style={style} className="waypoint-item">
-      <button className="drag" {...attributes} {...listeners}>⋮⋮</button>
-      <div className="waypoint-text">
-        <span>{waypoint.label}</span>
-        <small>{waypoint.lat.toFixed(5)}, {waypoint.lon.toFixed(5)}</small>
+    <li className="flex items-center gap-2 p-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800">
+      <div className="flex flex-col gap-1">
+        <button
+          type="button"
+          disabled={isFirst}
+          onClick={() => onMove(index, -1)}
+          className={`p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-30 disabled:hover:bg-transparent`}
+          aria-label="Move up"
+        >
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="18 15 12 9 6 15"></polyline></svg>
+        </button>
+        <button
+          type="button"
+          disabled={isLast}
+          onClick={() => onMove(index, 1)}
+          className={`p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-30 disabled:hover:bg-transparent`}
+          aria-label="Move down"
+        >
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+        </button>
       </div>
-      <button onClick={() => onRemove(waypoint.id)}>✕</button>
+      <div className="flex-1 min-w-0">
+        <div className="font-medium truncate text-sm">{waypoint.label}</div>
+        <div className="text-xs text-slate-500 dark:text-slate-400">{waypoint.lat.toFixed(5)}, {waypoint.lon.toFixed(5)}</div>
+      </div>
+      <button
+        onClick={() => onRemove(waypoint.id)}
+        className="p-1 text-slate-400 hover:text-red-500 transition-colors"
+        aria-label="Remove waypoint"
+      >
+        ✕
+      </button>
     </li>
   )
 }
 
-export default function WaypointList({ waypoints, setWaypoints }) {
-  const sensors = useSensors(useSensor(PointerSensor))
-  const [activeId, setActiveId] = useState(null)
-  const activeWaypoint = useMemo(() => waypoints.find((w) => w.id === activeId) ?? null, [activeId, waypoints])
-
-  const onDragEnd = (event) => {
-    const { active, over } = event
-    if (!over || active.id === over.id) return
-
-    const oldIndex = waypoints.findIndex((p) => p.id === active.id)
-    const newIndex = waypoints.findIndex((p) => p.id === over.id)
-    setWaypoints(arrayMove(waypoints, oldIndex, newIndex))
-  }
-
+export default function WaypointList({ waypoints, setWaypoints, onMove }) {
   const onRemove = (id) => setWaypoints(waypoints.filter((w) => w.id !== id))
 
   return (
-    <DndContext
-      sensors={sensors}
-      collisionDetection={closestCenter}
-      onDragStart={({ active }) => setActiveId(active.id)}
-      onDragEnd={(event) => {
-        onDragEnd(event)
-        setActiveId(null)
-      }}
-      onDragCancel={() => setActiveId(null)}
-    >
-      <SortableContext items={waypoints.map((w) => w.id)} strategy={verticalListSortingStrategy}>
-        <ul className="waypoint-list">
-          {waypoints.map((waypoint) => (
-            <SortableWaypoint key={waypoint.id} waypoint={waypoint} onRemove={onRemove} />
-          ))}
-        </ul>
-      </SortableContext>
-      <DragOverlay>
-        {activeWaypoint && (
-          <div className="waypoint-item waypoint-overlay" aria-hidden="true">
-            <button className="drag" type="button">⋮⋮</button>
-            <div className="waypoint-text">
-              <span>{activeWaypoint.label}</span>
-              <small>{activeWaypoint.lat.toFixed(5)}, {activeWaypoint.lon.toFixed(5)}</small>
-            </div>
-            <button type="button">✕</button>
-          </div>
-        )}
-      </DragOverlay>
-    </DndContext>
+    <ul className="flex flex-col gap-2 my-4">
+      {waypoints.map((waypoint, index) => (
+        <WaypointItem
+          key={waypoint.id}
+          waypoint={waypoint}
+          index={index}
+          isFirst={index === 0}
+          isLast={index === waypoints.length - 1}
+          onRemove={onRemove}
+          onMove={onMove}
+        />
+      ))}
+    </ul>
   )
 }

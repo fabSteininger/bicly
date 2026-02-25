@@ -137,6 +137,11 @@ const ElevationChart = ({ profile, title, legend, hoverHint, activeDistanceM, on
         {activePoint && <>
           <line x1={xFor(activePoint.distanceM)} y1={paddingY} x2={xFor(activePoint.distanceM)} y2={height - paddingY} stroke="#0f172a" strokeOpacity="0.32" strokeDasharray="3 3" />
           <circle cx={xFor(activePoint.distanceM)} cy={yFor(activePoint.elevationM)} r="4" fill="#0f172a" stroke="#fff" strokeWidth="1.5" />
+          <g transform={`translate(${xFor(activePoint.distanceM) + (xFor(activePoint.distanceM) > width / 2 ? -65 : 5)}, ${yFor(activePoint.elevationM) < 40 ? yFor(activePoint.elevationM) + 10 : yFor(activePoint.elevationM) - 40})`}>
+            <rect width="60" height="32" rx="4" fill="white" fillOpacity="0.9" stroke="#cbd5e1" strokeWidth="1" />
+            <text x="6" y="13" fontSize="9" fontWeight="bold" fill="#1e293b">{(activePoint.distanceM / 1000).toFixed(1)} km</text>
+            <text x="6" y="26" fontSize="9" fill="#475569">{Math.round(activePoint.elevationM)} m</text>
+          </g>
         </>}
       </svg>
       <small>{legend}</small>
@@ -273,6 +278,7 @@ export default function App() {
   const [placeResults, setPlaceResults] = useState([])
   const [searchingPlaces, setSearchingPlaces] = useState(false)
   const [plannerPanelOpen, setPlannerPanelOpen] = useState(false)
+  const [showSubtitle, setShowSubtitle] = useState(false)
   const [userMenuOpen, setUserMenuOpen] = useState(false)
   const [showRouteDetails, setShowRouteDetails] = useState(() => Boolean(plannerDraft?.latestGpx))
   const [routeStats, setRouteStats] = useState(() => plannerDraft?.routeStats?.elevationProfile ? plannerDraft.routeStats : emptyRouteStats)
@@ -318,6 +324,11 @@ export default function App() {
     m.addControl(new maplibregl.NavigationControl(), 'top-right')
     m.on('load', () => {
       ensureRouteLayer(m)
+      if (waypoints.length > 0) {
+        const bounds = new maplibregl.LngLatBounds()
+        waypoints.forEach((p) => bounds.extend([p.lon, p.lat]))
+        m.fitBounds(bounds, { padding: 50, maxZoom: 15, animate: false })
+      }
       setMap(m)
     })
     m.on('click', (e) => addWaypoint('', e.lngLat.lng, e.lngLat.lat))
@@ -345,8 +356,17 @@ export default function App() {
   useEffect(() => {
     if (!map || !map.isStyleLoaded()) return
     ensureRouteLayer(map)
-    map.getSource(ROUTE_SOURCE_ID)?.setData(routeGeoJson)
+    // Small timeout to ensure source is ready if just added
+    const timeout = setTimeout(() => {
+      map.getSource(ROUTE_SOURCE_ID)?.setData(routeGeoJson)
+    }, 0)
+    return () => clearTimeout(timeout)
   }, [map, routeGeoJson])
+
+  useEffect(() => {
+    if (!map || !userLocation || waypoints.length > 0) return
+    map.flyTo({ center: [userLocation.lon, userLocation.lat], zoom: 12 })
+  }, [map, userLocation, waypoints.length === 0])
 
   useEffect(() => {
     if (!map || !map.isStyleLoaded()) return
@@ -428,9 +448,9 @@ export default function App() {
   return (
     <main className="app-shell">
       <header className="app-header">
-        <div className="app-brand-block">
+        <div className="app-brand-block" onClick={() => setShowSubtitle((prev) => !prev)} style={{ cursor: 'pointer' }}>
           <div className="app-brand">{t.appTitle}</div>
-          <p>{t.appSub}</p>
+          <p className={showSubtitle ? 'force-show' : ''}>{t.appSub}</p>
         </div>
         <div className="topbar-controls">
           <button type="button" className="icon-button app-menu-button" aria-label={t.appMenu} onClick={() => setUserMenuOpen((prev) => !prev)}><span className="button-label">{t.appMenu}</span><span className="icon-only"><HamburgerIcon /></span></button>

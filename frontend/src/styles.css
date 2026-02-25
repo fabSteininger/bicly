@@ -75,9 +75,19 @@ a { color: var(--accent); }
 }
 
 .app-brand-block p {
-  margin: 0.15rem 0 0;
+  margin: 0.1rem 0 0;
   color: var(--muted);
-  font-size: 0.9rem;
+  font-size: 0.82rem;
+  line-height: 1.2;
+}
+
+@media (max-width: 640px) {
+  .app-brand-block p {
+    display: none;
+  }
+  .app-brand-block p.force-show {
+    display: block;
+  }
 }
 
 .app-brand {
@@ -85,6 +95,7 @@ a { color: var(--accent); }
   font-weight: 700;
   text-transform: none;
   letter-spacing: 0.03em;
+  line-height: 1.1;
 }
 
 .topbar-controls { position: relative; }
@@ -578,11 +589,6 @@ a { color: var(--accent); }
     right: auto;
     left: 0;
     width: min(280px, calc(100vw - 2rem));
-  }
-
-  .app-header {
-    flex-direction: column;
-    align-items: stretch;
   }
 
   .library-grid {

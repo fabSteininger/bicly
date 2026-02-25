@@ -99,9 +99,9 @@ button.active { background: linear-gradient(160deg, var(--accent), var(--accent-
   z-index: 100;
 }
 
-.app-brand-block { cursor: pointer; }
-.app-brand { font-size: 1.3rem; font-weight: 700; line-height: 1.1; }
-.app-brand-block p { margin: 0; color: var(--muted); font-size: 0.8rem; }
+.app-brand-block { cursor: pointer; min-width: 0; flex: 1; }
+.app-brand { font-size: 1.3rem; font-weight: 700; line-height: 1.1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.app-brand-block p { margin: 0; color: var(--muted); font-size: 0.8rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .topbar-controls { display: flex; align-items: center; gap: 0.5rem; }
 
@@ -116,6 +116,25 @@ button.active { background: linear-gradient(160deg, var(--accent), var(--accent-
   border-radius: 999px;
   background: #fff;
   border: 1px solid var(--line);
+  color: inherit;
+}
+.icon-button.small {
+  min-width: 2rem;
+  min-height: 2rem;
+  padding: 0.2rem;
+}
+
+.icon-only {
+  width: 1.4rem;
+  height: 1.4rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.icon-only svg {
+  width: 100%;
+  height: 100%;
+  fill: currentColor;
 }
 
 .sheet-expand-button {
@@ -172,6 +191,10 @@ button.active { background: linear-gradient(160deg, var(--accent), var(--accent-
 
 /* Mobile Adjustments (<= 768px) */
 @media (max-width: 768px) {
+  .app-header {
+    gap: 0.4rem;
+    padding: 0.4rem 0.6rem;
+  }
   .account-menu {
     position: fixed;
     inset: 0;
@@ -296,7 +319,25 @@ button.active { background: linear-gradient(160deg, var(--accent), var(--accent-
   box-shadow: 0 2px 5px rgba(0,0,0,0.2);
 }
 
-.elevation-chart-container { height: 160px; border: 1px solid var(--line); border-radius: 8px; background: #f9fbff; }
+.elevation-chart-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+.elevation-chart-header h4 { margin: 0; }
+
+.elevation-chart-container { height: 160px; border: 1px solid var(--line); border-radius: 8px; background: #f9fbff; transition: height 0.3s ease; }
+
+.elevation-chart.expanded .elevation-chart-container {
+  height: 400px;
+}
+
+@media (max-width: 768px) {
+  .elevation-chart.expanded .elevation-chart-container {
+    height: 300px;
+  }
+}
 
 .library-page, .settings-page, .legal-page { padding: 2rem; overflow-y: auto; max-width: 1000px; margin: 0 auto; width: 100%; display: flex; flex-direction: column; gap: 1.5rem; }
 
@@ -319,6 +360,12 @@ button.active { background: linear-gradient(160deg, var(--accent), var(--accent-
   border: 1px solid var(--line);
   border-radius: 8px;
 }
+
+.add-profile-form { display: flex; flex-direction: column; gap: 0.5rem; }
+.saved-profile-item { display: flex; justify-content: space-between; align-items: center; padding: 0.5rem; border-bottom: 1px solid var(--line); }
+.saved-profile-item:last-child { border-bottom: none; }
+.danger { color: var(--danger); border-color: var(--danger); }
+.danger:hover { background: #fff5f5; }
 
 .mobile-planner-toggle { display: none; }
 

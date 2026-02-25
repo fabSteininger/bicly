@@ -99,6 +99,24 @@ const ArrowDownIcon = () => (
   </svg>
 )
 
+const ExpandIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <polyline points="15 3 21 3 21 9"></polyline>
+    <polyline points="9 21 3 21 3 15"></polyline>
+    <line x1="21" y1="3" x2="14" y2="10"></line>
+    <line x1="3" y1="21" x2="10" y2="14"></line>
+  </svg>
+)
+
+const MinimizeIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <polyline points="4 14 10 14 10 20"></polyline>
+    <polyline points="20 10 14 10 14 4"></polyline>
+    <line x1="14" y1="10" x2="21" y2="3"></line>
+    <line x1="10" y1="14" x2="3" y2="21"></line>
+  </svg>
+)
+
 const TEXT = {
   en: {
     appTitle: 'Bicly', appSub: 'Ride-ready route planning with local GPX storage.', planner: 'Planner', library: 'Library',
@@ -109,7 +127,7 @@ const TEXT = {
     findPlace: 'Find place', placeSearchPlaceholder: 'Search city, street, or POI', noPlacesFound: 'No places found',
     searchingPlaces: 'Searching...', uploadSection: 'Upload route', uploadGpx: 'Upload GPX',
     uploadRouteTitle: 'Route title (optional)', uploadRouteButton: 'Save to local library',
-    noSaved: 'No saved routes yet.', openGpx: 'Open GPX', loadOnMap: 'Load on map', remove: 'Remove',
+    noSaved: 'No saved routes yet.', downloadGpx: 'Download GPX', loadOnMap: 'Load on map', remove: 'Remove',
     plannerHeading: 'Route planner', libraryHeading: 'Local route library', statusSaved: 'Route saved locally',
     statusUploaded: 'Route uploaded locally', locationUnavailable: 'Location unavailable',
     openPlanner: 'Open planner', closePlanner: 'Close planner', cyclingMode: 'Cycling mode',
@@ -120,6 +138,10 @@ const TEXT = {
     settings: 'Settings', settingsHeading: 'App settings',
     generalSettings: 'General settings', routingSettings: 'Routing settings',
     customProfile: 'Custom profile', customProfilePlaceholder: 'Paste your .brf profile here...',
+    routingProfiles: 'Routing profiles', addProfile: 'Add profile',
+    profileName: 'Profile name', profileContent: 'Profile content (.brf)',
+    saveProfile: 'Save profile', deleteProfile: 'Delete profile',
+    expandChart: 'Expand chart', collapseChart: 'Collapse chart',
     distance: 'Distance', ascent: 'Ascent', descent: 'Descent',
     elevationProfile: 'Elevation profile', steepLegend: 'Steepness (10°+ = red)',
     openRouteDetailsSheet: 'Open route details', closeRouteDetailsSheet: 'Close route details',
@@ -135,7 +157,7 @@ const TEXT = {
     findPlace: 'Ort suchen', placeSearchPlaceholder: 'Stadt, Straße oder POI suchen', noPlacesFound: 'Keine Orte gefunden',
     searchingPlaces: 'Suche...', uploadSection: 'Route hochladen', uploadGpx: 'GPX hochladen',
     uploadRouteTitle: 'Routentitel (optional)', uploadRouteButton: 'Lokal speichern',
-    noSaved: 'Noch keine gespeicherten Routen.', openGpx: 'GPX öffnen', loadOnMap: 'Auf Karte laden', remove: 'Entfernen',
+    noSaved: 'Noch keine gespeicherten Routen.', downloadGpx: 'GPX herunterladen', loadOnMap: 'Auf Karte laden', remove: 'Entfernen',
     plannerHeading: 'Routenplaner', libraryHeading: 'Lokale Routenbibliothek', statusSaved: 'Route lokal gespeichert',
     statusUploaded: 'Route lokal hochgeladen', locationUnavailable: 'Standort nicht verfügbar',
     openPlanner: 'Planer öffnen', closePlanner: 'Planer schließen', cyclingMode: 'Cycling-Modus',
@@ -146,6 +168,10 @@ const TEXT = {
     settings: 'Einstellungen', settingsHeading: 'App-Einstellungen',
     generalSettings: 'Allgemeine Einstellungen', routingSettings: 'Routing-Einstellungen',
     customProfile: 'Benutzerdefiniertes Profil', customProfilePlaceholder: 'Füge dein .brf Profil hier ein...',
+    routingProfiles: 'Routing-Profile', addProfile: 'Profil hinzufügen',
+    profileName: 'Profilname', profileContent: 'Profilinhalt (.brf)',
+    saveProfile: 'Profil speichern', deleteProfile: 'Profil löschen',
+    expandChart: 'Profil vergrößern', collapseChart: 'Profil verkleinern',
     distance: 'Distanz', ascent: 'Anstieg', descent: 'Abstieg',
     elevationProfile: 'Höhenprofil', steepLegend: 'Steigung (ab 10° = rot)',
     openRouteDetailsSheet: 'Routendetails öffnen', closeRouteDetailsSheet: 'Routendetails schließen',
@@ -154,7 +180,7 @@ const TEXT = {
   },
 }
 
-const ElevationChart = ({ profile, title, legend, hoverHint, activeDistanceM, onHoverPoint, onLeave }) => {
+const ElevationChart = ({ profile, title, legend, hoverHint, activeDistanceM, onHoverPoint, onLeave, isExpanded, onToggleExpand, t }) => {
   if (!profile.length) return null
 
   const totalDistM = profile[profile.length - 1].distanceM
@@ -262,8 +288,13 @@ const ElevationChart = ({ profile, title, legend, hoverHint, activeDistanceM, on
   }
 
   return (
-    <section className="elevation-chart" aria-label={title}>
-      <h4>{title}</h4>
+    <section className={`elevation-chart ${isExpanded ? 'expanded' : ''}`} aria-label={title}>
+      <div className="elevation-chart-header">
+        <h4>{title}</h4>
+        <button type="button" className="icon-button small" onClick={onToggleExpand} aria-label={isExpanded ? t.collapseChart : t.expandChart}>
+          <span className="icon-only">{isExpanded ? <MinimizeIcon /> : <ExpandIcon />}</span>
+        </button>
+      </div>
       <div className="elevation-chart-container">
         <Line data={data} options={options} />
       </div>
@@ -388,6 +419,7 @@ export default function App() {
   const [activePage, setActivePage] = useState('planner')
   const [waypoints, setWaypoints] = useState(() => Array.isArray(plannerDraft?.waypoints) ? plannerDraft.waypoints : [])
   const [profiles, setProfiles] = useState([])
+  const [customProfiles, setCustomProfiles] = useState(() => JSON.parse(localStorage.getItem('bicly_custom_profiles') || '[]'))
   const [activeProfile, setActiveProfile] = useState(() => typeof plannerDraft?.activeProfile === 'string' ? plannerDraft.activeProfile : 'trekking')
   const [customProfileContent, setCustomProfileContent] = useState(() => localStorage.getItem('bicly_custom_profile_tmp') || '')
   const [latestGpx, setLatestGpx] = useState(() => typeof plannerDraft?.latestGpx === 'string' ? plannerDraft.latestGpx : '')
@@ -395,6 +427,8 @@ export default function App() {
   const [title, setTitle] = useState(() => typeof plannerDraft?.title === 'string' ? plannerDraft.title : 'New Route')
   const [uploadTitle, setUploadTitle] = useState('')
   const [uploadGpxFile, setUploadGpxFile] = useState(null)
+  const [newProfileName, setNewProfileName] = useState('')
+  const [newProfileContent, setNewProfileContent] = useState('')
   const [savedRoutes, setSavedRoutes] = useState(() => JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '[]'))
   const [message, setMessage] = useState('')
   const [userLocation, setUserLocation] = useState(null)
@@ -406,6 +440,7 @@ export default function App() {
   const [userMenuOpen, setUserMenuOpen] = useState(false)
   const [headerExpanded, setHeaderExpanded] = useState(false)
   const [showRouteDetails, setShowRouteDetails] = useState(() => Boolean(plannerDraft?.latestGpx))
+  const [chartExpanded, setChartExpanded] = useState(false)
   const [routeStats, setRouteStats] = useState(() => plannerDraft?.routeStats?.elevationProfile ? plannerDraft.routeStats : emptyRouteStats)
   const [activeElevationPoint, setActiveElevationPoint] = useState(null)
   const [isExternalRoute, setIsExternalRoute] = useState(false)
@@ -414,13 +449,18 @@ export default function App() {
   useEffect(() => { localStorage.setItem(STORAGE_KEY, JSON.stringify(savedRoutes)) }, [savedRoutes])
   useEffect(() => {
     loadProfiles().then((rows) => {
-      setProfiles(rows)
-      if (!rows[0]) return
+      const all = [...rows, ...customProfiles]
+      setProfiles(all)
+      if (!all[0]) return
       setActiveProfile((prev) => {
-        return rows.some((p) => p.id === prev) ? prev : rows[0].id
+        return all.some((p) => p.id === prev) ? prev : all[0].id
       })
     })
-  }, [])
+  }, [customProfiles])
+
+  useEffect(() => {
+    localStorage.setItem('bicly_custom_profiles', JSON.stringify(customProfiles))
+  }, [customProfiles])
 
   useEffect(() => {
     localStorage.setItem(PLANNER_DRAFT_KEY, JSON.stringify({
@@ -542,7 +582,10 @@ export default function App() {
 
     if (activeProfile === 'custom' && !customProfileContent) return
 
-    fetchBrouterRoute({ profile: profileToUse, points: brouterPoints, signal: controller.signal })
+    const isCustomSaved = customProfiles.find((p) => p.id === activeProfile)
+    const finalProfile = isCustomSaved ? isCustomSaved.content : profileToUse
+
+    fetchBrouterRoute({ profile: finalProfile, points: brouterPoints, signal: controller.signal })
       .then((text) => { setLatestGpx(text); setRouteGeoJson(parseGpxToGeoJson(text)); setRouteStats(parseGpxStats(text)) })
       .catch(() => {})
     return () => controller.abort()
@@ -593,7 +636,8 @@ export default function App() {
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `${route.title || 'route'}.gpx`
+    const safeTitle = (route.title || 'route').replace(/[./\\]/g, '_')
+    a.download = `${safeTitle}.gpx`
     document.body.appendChild(a)
     a.click()
     document.body.removeChild(a)
@@ -608,15 +652,43 @@ export default function App() {
     const geo = parseGpxToGeoJson(route.gpx)
     setRouteGeoJson(geo)
     setRouteStats(parseGpxStats(route.gpx))
-    const line = geo.features[0]?.geometry?.coordinates ?? []
-    if (line.length >= 2) {
-      const start = line[0]
-      const end = line[line.length - 1]
+
+    const coords = geo.features[0]?.geometry?.coordinates ?? []
+    if (coords.length >= 2) {
+      const start = coords[0]
+      const end = coords[coords.length - 1]
       setWaypoints([
         { id: crypto.randomUUID(), label: 'Start', lon: start[0], lat: start[1] },
         { id: crypto.randomUUID(), label: 'End', lon: end[0], lat: end[1] },
       ])
+
+      if (map) {
+        const bounds = new maplibregl.LngLatBounds()
+        coords.forEach((c) => bounds.extend(c))
+        map.fitBounds(bounds, { padding: 50, maxZoom: 15 })
+      }
     }
+  }
+
+  const addCustomProfile = () => {
+    if (!newProfileName || !newProfileContent) return
+    const id = crypto.randomUUID()
+    setCustomProfiles((prev) => [...prev, { id, name: newProfileName, content: newProfileContent }])
+    setNewProfileName('')
+    setNewProfileContent('')
+  }
+
+  const deleteCustomProfile = (id) => {
+    setCustomProfiles((prev) => prev.filter((p) => p.id !== id))
+    if (activeProfile === id) setActiveProfile('trekking')
+  }
+
+  const handleProfileUpload = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const content = await file.text()
+    setNewProfileContent(content)
+    if (!newProfileName) setNewProfileName(file.name.replace('.brf', ''))
   }
 
   return (
@@ -668,7 +740,7 @@ export default function App() {
               <span>{t.routeDetails}</span>
               <span className="icon-small" aria-hidden="true">{showRouteDetails ? <ArrowDownIcon /> : <ArrowUpIcon />}</span>
             </button>
-            {showRouteDetails && latestGpx && <section className="route-details"><h3>{t.routeDetails}</h3><p><strong>{t.distance}:</strong> {routeStats.distanceKm.toFixed(1)} km</p><p><strong>{t.ascent}:</strong> {Math.round(routeStats.ascentM)} m</p><p><strong>{t.descent}:</strong> {Math.round(routeStats.descentM)} m</p>{routeStats.rawSummary && <p>{routeStats.rawSummary}</p>}<ElevationChart profile={routeStats.elevationProfile} title={t.elevationProfile} legend={t.steepLegend} hoverHint={t.elevationFocusHint} activeDistanceM={activeElevationPoint?.distanceM} onHoverPoint={setActiveElevationPoint} onLeave={() => setActiveElevationPoint(null)} /></section>}
+          {showRouteDetails && latestGpx && <section className="route-details"><h3>{t.routeDetails}</h3><p><strong>{t.distance}:</strong> {routeStats.distanceKm.toFixed(1)} km</p><p><strong>{t.ascent}:</strong> {Math.round(routeStats.ascentM)} m</p><p><strong>{t.descent}:</strong> {Math.round(routeStats.descentM)} m</p>{routeStats.rawSummary && <p>{routeStats.rawSummary}</p>}<ElevationChart profile={routeStats.elevationProfile} title={t.elevationProfile} legend={t.steepLegend} hoverHint={t.elevationFocusHint} activeDistanceM={activeElevationPoint?.distanceM} onHoverPoint={setActiveElevationPoint} onLeave={() => setActiveElevationPoint(null)} isExpanded={chartExpanded} onToggleExpand={() => setChartExpanded((prev) => !prev)} t={t} /></section>}
             {!latestGpx && <p className="route-bottom-sheet-empty">{t.routeDetailsUnavailable}</p>}
           </section>
         </section>
@@ -702,7 +774,7 @@ export default function App() {
           <label className="upload">{t.uploadGpx}<input type="file" accept=".gpx,application/gpx+xml" onChange={(e) => setUploadGpxFile(e.target.files?.[0] ?? null)} /></label>
           <button type="button" onClick={uploadGpx} disabled={!uploadGpxFile}>{t.uploadRouteButton}</button></div>
         <div className="panel">{!savedRoutes.length && <p>{t.noSaved}</p>}
-          {savedRoutes.map((route) => <article className="route-card" key={route.id}><div className="route-card-head"><strong>{route.title}</strong></div><div className="quick-actions"><button onClick={() => openRoute(route)}>{t.openGpx}</button><button onClick={() => loadRouteToMap(route)}>{t.loadOnMap}</button><button onClick={() => setSavedRoutes((prev) => prev.filter((x) => x.id !== route.id))}>{t.remove}</button></div></article>)}
+          {savedRoutes.map((route) => <article className="route-card" key={route.id}><div className="route-card-head"><strong>{route.title}</strong></div><div className="quick-actions"><button onClick={() => openRoute(route)}>{t.downloadGpx}</button><button onClick={() => loadRouteToMap(route)}>{t.loadOnMap}</button><button onClick={() => setSavedRoutes((prev) => prev.filter((x) => x.id !== route.id))}>{t.remove}</button></div></article>)}
         </div>
       </section>}
 
@@ -718,6 +790,34 @@ export default function App() {
             <option value="de">Deutsch</option>
           </select>
         </div>
+
+        <div className="panel">
+          <h3>{t.routingProfiles}</h3>
+          <div className="add-profile-form">
+            <label>{t.profileName}</label>
+            <input value={newProfileName} onChange={(e) => setNewProfileName(e.target.value)} placeholder="e.g. My Custom MTB" />
+            <label>{t.profileContent}</label>
+            <textarea
+              className="custom-profile-area"
+              value={newProfileContent}
+              onChange={(e) => setNewProfileContent(e.target.value)}
+              placeholder={t.customProfilePlaceholder}
+              rows={5}
+            />
+            <input type="file" accept=".brf" onChange={handleProfileUpload} />
+            <button onClick={addCustomProfile} disabled={!newProfileName || !newProfileContent}>{t.addProfile}</button>
+          </div>
+
+          <div className="saved-profiles-list">
+            {customProfiles.map((p) => (
+              <div key={p.id} className="saved-profile-item">
+                <span>{p.name}</span>
+                <button className="danger" onClick={() => deleteCustomProfile(p.id)}>{t.deleteProfile}</button>
+              </div>
+            ))}
+          </div>
+        </div>
+
         <button type="button" onClick={() => setActivePage('planner')}>{t.backToPlanner}</button>
       </section>}
 

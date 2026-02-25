@@ -8,9 +8,8 @@ export const fetchBrouterRoute = async ({ profile, points, signal, avoidFerries 
     params.set('lonlats', points)
     params.set('alternativeidx', '0')
     params.set('format', 'gpx')
-    if (avoidFerries) {
-      params.set('allow_ferries', '0')
-    }
+    params.set('allow_ferries', avoidFerries ? '0' : '1')
+    params.set('avoid_ferries', avoidFerries ? '1' : '0')
     // For custom profiles, we POST the profile content
     const res = await fetch(`${BROUTER_DIRECT_URL}?${params.toString()}`, {
       method: 'POST',
@@ -26,9 +25,8 @@ export const fetchBrouterRoute = async ({ profile, points, signal, avoidFerries 
   params.set('profile', profile || 'trekking')
   params.set('alternativeidx', '0')
   params.set('format', 'gpx')
-  if (avoidFerries) {
-    params.set('allow_ferries', '0')
-  }
+  params.set('allow_ferries', avoidFerries ? '0' : '1')
+  params.set('avoid_ferries', avoidFerries ? '1' : '0')
 
   const res = await fetch(`${BROUTER_DIRECT_URL}?${params.toString()}`, { signal })
   if (!res.ok) throw new Error('BRouter request failed')
@@ -41,9 +39,8 @@ export const buildBrouterRouteUrl = ({ profile, points, avoidFerries }) => {
   params.set('profile', profile || 'trekking')
   params.set('alternativeidx', '0')
   params.set('format', 'gpx')
-  if (avoidFerries) {
-    params.set('allow_ferries', '0')
-  }
+  params.set('allow_ferries', avoidFerries ? '0' : '1')
+  params.set('avoid_ferries', avoidFerries ? '1' : '0')
   return `${BROUTER_DIRECT_URL}?${params.toString()}`
 }
 

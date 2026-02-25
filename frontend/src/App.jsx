@@ -873,10 +873,6 @@ export default function App() {
                 <p>&copy; OpenStreetMap contributors, ODbL.</p>
               </article>
               <article>
-                <strong>PocketBase</strong>
-                <p>Licensed under MIT License.</p>
-              </article>
-              <article>
                 <strong>BRouter</strong>
                 <p>Licensed under MIT License.</p>
               </article>

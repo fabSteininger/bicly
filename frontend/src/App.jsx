@@ -75,7 +75,6 @@ const ROUTE_LAYER_ID = 'generated-route-layer'
 const ROUTE_HOVER_SOURCE_ID = 'generated-route-hover-source'
 const ROUTE_HOVER_LAYER_ID = 'generated-route-hover-layer'
 const STORAGE_KEY = 'bicly_saved_routes'
-const CUSTOM_PROFILES_KEY = 'bicly_custom_profiles'
 const PLANNER_DRAFT_KEY = 'bicly_planner_draft'
 
 const emptyRouteGeoJson = { type: 'FeatureCollection', features: [] }
@@ -100,6 +99,24 @@ const ArrowDownIcon = () => (
   </svg>
 )
 
+const ExpandIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <polyline points="15 3 21 3 21 9"></polyline>
+    <polyline points="9 21 3 21 3 15"></polyline>
+    <line x1="21" y1="3" x2="14" y2="10"></line>
+    <line x1="3" y1="21" x2="10" y2="14"></line>
+  </svg>
+)
+
+const MinimizeIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <polyline points="4 14 10 14 10 20"></polyline>
+    <polyline points="20 10 14 10 14 4"></polyline>
+    <line x1="14" y1="10" x2="21" y2="3"></line>
+    <line x1="10" y1="14" x2="3" y2="21"></line>
+  </svg>
+)
+
 const TEXT = {
   en: {
     appTitle: 'Bicly', appSub: 'Ride-ready route planning with local GPX storage.', planner: 'Planner', library: 'Library',
@@ -110,7 +127,7 @@ const TEXT = {
     findPlace: 'Find place', placeSearchPlaceholder: 'Search city, street, or POI', noPlacesFound: 'No places found',
     searchingPlaces: 'Searching...', uploadSection: 'Upload route', uploadGpx: 'Upload GPX',
     uploadRouteTitle: 'Route title (optional)', uploadRouteButton: 'Save to local library',
-    noSaved: 'No saved routes yet.', openGpx: 'Open GPX', loadOnMap: 'Load on map', remove: 'Remove',
+    noSaved: 'No saved routes yet.', downloadGpx: 'Download GPX', loadOnMap: 'Load on map', remove: 'Remove',
     plannerHeading: 'Route planner', libraryHeading: 'Local route library', statusSaved: 'Route saved locally',
     statusUploaded: 'Route uploaded locally', locationUnavailable: 'Location unavailable',
     openPlanner: 'Open planner', closePlanner: 'Close planner', cyclingMode: 'Cycling mode',
@@ -120,9 +137,11 @@ const TEXT = {
     privacyHeading: 'Privacy policy', impressumHeading: 'Impressum',
     settings: 'Settings', settingsHeading: 'App settings',
     generalSettings: 'General settings', routingSettings: 'Routing settings',
-    customProfiles: 'Custom BRouter profiles', uploadProfile: 'Upload profile (.brf)',
-    profileName: 'Profile name (optional)', noCustomProfiles: 'No custom profiles yet.',
-    apply: 'Apply',
+    customProfile: 'Custom profile', customProfilePlaceholder: 'Paste your .brf profile here...',
+    routingProfiles: 'Routing profiles', addProfile: 'Add profile',
+    profileName: 'Profile name', profileContent: 'Profile content (.brf)',
+    saveProfile: 'Save profile', deleteProfile: 'Delete profile',
+    expandChart: 'Expand chart', collapseChart: 'Collapse chart',
     distance: 'Distance', ascent: 'Ascent', descent: 'Descent',
     elevationProfile: 'Elevation profile', steepLegend: 'Steepness (10°+ = red)',
     openRouteDetailsSheet: 'Open route details', closeRouteDetailsSheet: 'Close route details',
@@ -138,7 +157,7 @@ const TEXT = {
     findPlace: 'Ort suchen', placeSearchPlaceholder: 'Stadt, Straße oder POI suchen', noPlacesFound: 'Keine Orte gefunden',
     searchingPlaces: 'Suche...', uploadSection: 'Route hochladen', uploadGpx: 'GPX hochladen',
     uploadRouteTitle: 'Routentitel (optional)', uploadRouteButton: 'Lokal speichern',
-    noSaved: 'Noch keine gespeicherten Routen.', openGpx: 'GPX öffnen', loadOnMap: 'Auf Karte laden', remove: 'Entfernen',
+    noSaved: 'Noch keine gespeicherten Routen.', downloadGpx: 'GPX herunterladen', loadOnMap: 'Auf Karte laden', remove: 'Entfernen',
     plannerHeading: 'Routenplaner', libraryHeading: 'Lokale Routenbibliothek', statusSaved: 'Route lokal gespeichert',
     statusUploaded: 'Route lokal hochgeladen', locationUnavailable: 'Standort nicht verfügbar',
     openPlanner: 'Planer öffnen', closePlanner: 'Planer schließen', cyclingMode: 'Cycling-Modus',
@@ -148,9 +167,11 @@ const TEXT = {
     privacyHeading: 'Datenschutzerklärung', impressumHeading: 'Impressum',
     settings: 'Einstellungen', settingsHeading: 'App-Einstellungen',
     generalSettings: 'Allgemeine Einstellungen', routingSettings: 'Routing-Einstellungen',
-    customProfiles: 'Eigene BRouter-Profile', uploadProfile: 'Profil hochladen (.brf)',
-    profileName: 'Profilname (optional)', noCustomProfiles: 'Noch keine eigenen Profile.',
-    apply: 'Anwenden',
+    customProfile: 'Benutzerdefiniertes Profil', customProfilePlaceholder: 'Füge dein .brf Profil hier ein...',
+    routingProfiles: 'Routing-Profile', addProfile: 'Profil hinzufügen',
+    profileName: 'Profilname', profileContent: 'Profilinhalt (.brf)',
+    saveProfile: 'Profil speichern', deleteProfile: 'Profil löschen',
+    expandChart: 'Profil vergrößern', collapseChart: 'Profil verkleinern',
     distance: 'Distanz', ascent: 'Anstieg', descent: 'Abstieg',
     elevationProfile: 'Höhenprofil', steepLegend: 'Steigung (ab 10° = rot)',
     openRouteDetailsSheet: 'Routendetails öffnen', closeRouteDetailsSheet: 'Routendetails schließen',
@@ -159,13 +180,30 @@ const TEXT = {
   },
 }
 
-const ElevationChart = ({ profile, title, legend, hoverHint, activeDistanceM, onHoverPoint, onLeave }) => {
+const ElevationChart = ({ profile, title, legend, hoverHint, activeDistanceM, onHoverPoint, onLeave, isExpanded, onToggleExpand, t }) => {
   if (!profile.length) return null
 
   const totalDistM = profile[profile.length - 1].distanceM
+
+  const displayProfile = useMemo(() => {
+    if (profile.length < 2 || totalDistM < 100000) return profile
+    // For tracks > 100km, downsample to ~1 point per km
+    const stepM = 1000
+    const filtered = [profile[0]]
+    let lastM = 0
+    for (let i = 1; i < profile.length - 1; i += 1) {
+      if (profile[i].distanceM >= lastM + stepM) {
+        filtered.push(profile[i])
+        lastM = profile[i].distanceM
+      }
+    }
+    filtered.push(profile[profile.length - 1])
+    return filtered
+  }, [profile, totalDistM])
+
   const data = {
     datasets: [{
-      data: profile.map((p) => ({ x: p.distanceM, y: p.elevationM })),
+      data: displayProfile.map((p) => ({ x: p.distanceM, y: p.elevationM })),
       fill: true,
       backgroundColor: 'rgba(168, 200, 255, 0.4)',
       borderColor: '#1f6feb',
@@ -199,7 +237,7 @@ const ElevationChart = ({ profile, title, legend, hoverHint, activeDistanceM, on
       },
       verticalLine: {
         activeDistanceM,
-        profile,
+        profile: displayProfile,
       },
     },
     scales: {
@@ -229,20 +267,20 @@ const ElevationChart = ({ profile, title, legend, hoverHint, activeDistanceM, on
         }
 
         let low = 0
-        let high = profile.length - 1
+        let high = displayProfile.length - 1
         while (low < high) {
           const mid = Math.floor((low + high) / 2)
-          if (profile[mid].distanceM < xMeters) {
+          if (displayProfile[mid].distanceM < xMeters) {
             low = mid + 1
           } else {
             high = mid
           }
         }
         let bestIndex = low
-        if (low > 0 && Math.abs(profile[low - 1].distanceM - xMeters) < Math.abs(profile[low].distanceM - xMeters)) {
+        if (low > 0 && Math.abs(displayProfile[low - 1].distanceM - xMeters) < Math.abs(displayProfile[low].distanceM - xMeters)) {
           bestIndex = low - 1
         }
-        onHoverPoint?.(profile[bestIndex])
+        onHoverPoint?.(displayProfile[bestIndex])
       } else {
         onLeave?.()
       }
@@ -250,8 +288,13 @@ const ElevationChart = ({ profile, title, legend, hoverHint, activeDistanceM, on
   }
 
   return (
-    <section className="elevation-chart" aria-label={title}>
-      <h4>{title}</h4>
+    <section className={`elevation-chart ${isExpanded ? 'expanded' : ''}`} aria-label={title}>
+      <div className="elevation-chart-header">
+        <h4>{title}</h4>
+        <button type="button" className="icon-button small" onClick={onToggleExpand} aria-label={isExpanded ? t.collapseChart : t.expandChart}>
+          <span className="icon-only">{isExpanded ? <MinimizeIcon /> : <ExpandIcon />}</span>
+        </button>
+      </div>
       <div className="elevation-chart-container">
         <Line data={data} options={options} />
       </div>
@@ -376,16 +419,17 @@ export default function App() {
   const [activePage, setActivePage] = useState('planner')
   const [waypoints, setWaypoints] = useState(() => Array.isArray(plannerDraft?.waypoints) ? plannerDraft.waypoints : [])
   const [profiles, setProfiles] = useState([])
+  const [customProfiles, setCustomProfiles] = useState(() => JSON.parse(localStorage.getItem('bicly_custom_profiles') || '[]'))
   const [activeProfile, setActiveProfile] = useState(() => typeof plannerDraft?.activeProfile === 'string' ? plannerDraft.activeProfile : 'trekking')
+  const [customProfileContent, setCustomProfileContent] = useState(() => localStorage.getItem('bicly_custom_profile_tmp') || '')
   const [latestGpx, setLatestGpx] = useState(() => typeof plannerDraft?.latestGpx === 'string' ? plannerDraft.latestGpx : '')
   const [routeGeoJson, setRouteGeoJson] = useState(() => plannerDraft?.routeGeoJson?.type === 'FeatureCollection' ? plannerDraft.routeGeoJson : emptyRouteGeoJson)
   const [title, setTitle] = useState(() => typeof plannerDraft?.title === 'string' ? plannerDraft.title : 'New Route')
   const [uploadTitle, setUploadTitle] = useState('')
   const [uploadGpxFile, setUploadGpxFile] = useState(null)
+  const [newProfileName, setNewProfileName] = useState('')
+  const [newProfileContent, setNewProfileContent] = useState('')
   const [savedRoutes, setSavedRoutes] = useState(() => JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '[]'))
-  const [customProfiles, setCustomProfiles] = useState(() => JSON.parse(localStorage.getItem(CUSTOM_PROFILES_KEY) ?? '[]'))
-  const [uploadProfileFile, setUploadProfileFile] = useState(null)
-  const [uploadProfileName, setUploadProfileName] = useState('')
   const [message, setMessage] = useState('')
   const [userLocation, setUserLocation] = useState(null)
   const [placeQuery, setPlaceQuery] = useState('')
@@ -396,19 +440,27 @@ export default function App() {
   const [userMenuOpen, setUserMenuOpen] = useState(false)
   const [headerExpanded, setHeaderExpanded] = useState(false)
   const [showRouteDetails, setShowRouteDetails] = useState(() => Boolean(plannerDraft?.latestGpx))
+  const [chartExpanded, setChartExpanded] = useState(false)
   const [routeStats, setRouteStats] = useState(() => plannerDraft?.routeStats?.elevationProfile ? plannerDraft.routeStats : emptyRouteStats)
   const [activeElevationPoint, setActiveElevationPoint] = useState(null)
+  const [isExternalRoute, setIsExternalRoute] = useState(false)
   const hasInitialFit = useRef(false)
 
   useEffect(() => { localStorage.setItem(STORAGE_KEY, JSON.stringify(savedRoutes)) }, [savedRoutes])
-  useEffect(() => { localStorage.setItem(CUSTOM_PROFILES_KEY, JSON.stringify(customProfiles)) }, [customProfiles])
   useEffect(() => {
     loadProfiles().then((rows) => {
-      setProfiles(rows)
-      if (!rows[0]) return
-      setActiveProfile((prev) => rows.some((profile) => profile.brouter_profile_id === prev) ? prev : rows[0].brouter_profile_id)
+      const all = [...rows, ...customProfiles]
+      setProfiles(all)
+      if (!all[0]) return
+      setActiveProfile((prev) => {
+        return all.some((p) => p.id === prev) ? prev : all[0].id
+      })
     })
-  }, [])
+  }, [customProfiles])
+
+  useEffect(() => {
+    localStorage.setItem('bicly_custom_profiles', JSON.stringify(customProfiles))
+  }, [customProfiles])
 
   useEffect(() => {
     localStorage.setItem(PLANNER_DRAFT_KEY, JSON.stringify({
@@ -420,14 +472,20 @@ export default function App() {
       routeStats,
       showRouteDetails,
     }))
-  }, [waypoints, activeProfile, latestGpx, routeGeoJson, title, routeStats, showRouteDetails])
+    if (activeProfile === 'custom') {
+      localStorage.setItem('bicly_custom_profile_tmp', customProfileContent)
+    }
+  }, [waypoints, activeProfile, customProfileContent, latestGpx, routeGeoJson, title, routeStats, showRouteDetails])
 
   useEffect(() => {
     if (!navigator.geolocation) return
     navigator.geolocation.getCurrentPosition((position) => setUserLocation({ lon: position.coords.longitude, lat: position.coords.latitude }))
   }, [])
 
-  const addWaypoint = (label, lon, lat) => setWaypoints((prev) => [...prev, { id: crypto.randomUUID(), label: label || `Pin ${prev.length + 1}`, lon: Number(lon.toFixed(6)), lat: Number(lat.toFixed(6)) }])
+  const addWaypoint = (label, lon, lat) => {
+    setIsExternalRoute(false)
+    setWaypoints((prev) => [...prev, { id: crypto.randomUUID(), label: label || `Pin ${prev.length + 1}`, lon: Number(lon.toFixed(6)), lat: Number(lat.toFixed(6)) }])
+  }
   const brouterPoints = useMemo(() => waypoints.map((p) => `${p.lon},${p.lat}`).join('|'), [waypoints])
 
   useEffect(() => {
@@ -517,25 +575,21 @@ export default function App() {
 
   useEffect(() => {
     if (waypoints.length < 2) { setLatestGpx(''); setRouteGeoJson(emptyRouteGeoJson); setRouteStats(emptyRouteStats); setShowRouteDetails(false); return }
+    if (isExternalRoute) return
+
     const controller = new AbortController()
+    const profileToUse = activeProfile === 'custom' ? customProfileContent : activeProfile
 
-    let activeProfileVal = activeProfile
-    let customProfileContent = null
-    if (activeProfileVal.startsWith('custom:')) {
-      const customId = activeProfileVal.replace('custom:', '')
-      const profile = customProfiles.find((p) => p.id === customId)
-      if (profile) {
-        customProfileContent = profile.content
-      } else {
-        activeProfileVal = 'trekking'
-      }
-    }
+    if (activeProfile === 'custom' && !customProfileContent) return
 
-    fetchBrouterRoute({ profile: activeProfileVal, points: brouterPoints, customProfileContent, signal: controller.signal })
+    const isCustomSaved = customProfiles.find((p) => p.id === activeProfile)
+    const finalProfile = isCustomSaved ? isCustomSaved.content : profileToUse
+
+    fetchBrouterRoute({ profile: finalProfile, points: brouterPoints, signal: controller.signal })
       .then((text) => { setLatestGpx(text); setRouteGeoJson(parseGpxToGeoJson(text)); setRouteStats(parseGpxStats(text)) })
       .catch(() => {})
     return () => controller.abort()
-  }, [activeProfile, brouterPoints, waypoints.length, customProfiles])
+  }, [activeProfile, customProfileContent, brouterPoints, waypoints.length, isExternalRoute])
 
   useEffect(() => {
     if (!latestGpx) return
@@ -577,54 +631,99 @@ export default function App() {
     setMessage(t.statusUploaded)
   }
 
-  const openRoute = (route) => window.open(URL.createObjectURL(new Blob([route.gpx], { type: 'application/gpx+xml' })), '_blank', 'noopener,noreferrer')
+  const openRoute = (route) => {
+    const blob = new Blob([route.gpx], { type: 'application/gpx+xml' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    const safeTitle = (route.title || 'route').replace(/[./\\]/g, '_')
+    a.download = `${safeTitle}.gpx`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }
 
   const loadRouteToMap = (route) => {
     setActivePage('planner')
     setPlannerPanelOpen(false)
+    setIsExternalRoute(true)
     setLatestGpx(route.gpx)
     const geo = parseGpxToGeoJson(route.gpx)
     setRouteGeoJson(geo)
     setRouteStats(parseGpxStats(route.gpx))
-    const line = geo.features[0]?.geometry?.coordinates ?? []
-    if (line.length) {
-      setWaypoints(line.slice(0, Math.min(12, line.length)).map(([lon, lat], i) => ({ id: crypto.randomUUID(), label: `Pin ${i + 1}`, lon, lat })))
+
+    const coords = geo.features[0]?.geometry?.coordinates ?? []
+    if (coords.length >= 2) {
+      const start = coords[0]
+      const end = coords[coords.length - 1]
+      setWaypoints([
+        { id: crypto.randomUUID(), label: 'Start', lon: start[0], lat: start[1] },
+        { id: crypto.randomUUID(), label: 'End', lon: end[0], lat: end[1] },
+      ])
+
+      if (map) {
+        const bounds = new maplibregl.LngLatBounds()
+        coords.forEach((c) => bounds.extend(c))
+        map.fitBounds(bounds, { padding: 50, maxZoom: 15 })
+      }
     }
   }
 
-  return (
-    <main className="app-shell">
-      <header className="app-header">
-        <div className="app-brand-block" onClick={() => setShowSubtitle((prev) => !prev)} style={{ cursor: 'pointer' }}>
-          <div className="app-brand">{t.appTitle}</div>
-          <p className={showSubtitle ? 'force-show' : ''}>{t.appSub}</p>
-        </div>
-        <div className="topbar-controls">
-          <button type="button" className="icon-button app-menu-button" aria-label={t.appMenu} onClick={() => setUserMenuOpen((prev) => !prev)}><span className="icon-only"><HamburgerIcon /></span><span className="button-label">{t.appMenu}</span></button>
-          {activePage === 'planner' && <button type="button" className="icon-button sheet-expand-button" aria-expanded={plannerPanelOpen} aria-label={plannerPanelOpen ? t.closePlanner : t.openRouteTools} onClick={(e) => { e.stopPropagation(); setPlannerPanelOpen((prev) => !prev) }}><span className="icon-only">{plannerPanelOpen ? <ArrowUpIcon /> : <ArrowDownIcon />}</span><span className="button-label">{plannerPanelOpen ? t.closePlanner : t.openPlanner}</span></button>}
-          {userMenuOpen && (
-            <div className={`account-menu ${userMenuOpen ? 'open' : ''}`}>
-              <div className="menu-header">
-                <h3>{t.appMenu}</h3>
-                <button type="button" className="menu-close" onClick={() => setUserMenuOpen(false)}>✕</button>
-              </div>
-              <div className="menu-content">
-                <button className={activePage === 'planner' ? 'active' : ''} onClick={() => { setActivePage('planner'); setUserMenuOpen(false) }}>{t.planner}</button>
-                <button className={activePage === 'library' ? 'active' : ''} onClick={() => { setActivePage('library'); setUserMenuOpen(false) }}>{t.library}</button>
-                <button className={activePage === 'settings' ? 'active' : ''} onClick={() => { setActivePage('settings'); setUserMenuOpen(false) }}>{t.settings}</button>
-                <button className={activePage === 'privacy' ? 'active' : ''} onClick={() => { setActivePage('privacy'); setUserMenuOpen(false) }}>{t.privacyPolicy}</button>
-                <button className={activePage === 'impressum' ? 'active' : ''} onClick={() => { setActivePage('impressum'); setUserMenuOpen(false) }}>{t.impressum}</button>
-                <div className="menu-setting-row">
-                  <label>{t.language}<select value={lang} onChange={(e) => setLang(e.target.value)}><option value="en">English</option><option value="de">Deutsch</option></select></label>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      </header>
-      {message && <p className="status info">{message}</p>}
+  const addCustomProfile = () => {
+    if (!newProfileName || !newProfileContent) return
+    const id = crypto.randomUUID()
+    setCustomProfiles((prev) => [...prev, { id, name: newProfileName, content: newProfileContent }])
+    setNewProfileName('')
+    setNewProfileContent('')
+  }
 
-      {activePage === 'planner' && <section className={`planner-layout ${plannerPanelOpen ? '' : 'panel-collapsed'}`}>
+  const deleteCustomProfile = (id) => {
+    setCustomProfiles((prev) => prev.filter((p) => p.id !== id))
+    if (activeProfile === id) setActiveProfile('trekking')
+  }
+
+  const handleProfileUpload = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const content = await file.text()
+    setNewProfileContent(content)
+    if (!newProfileName) setNewProfileName(file.name.replace('.brf', ''))
+  }
+
+  return (
+    <div className={`app-shell ${userMenuOpen ? 'menu-open' : ''}`}>
+      <aside className={`account-menu ${userMenuOpen ? 'open' : ''}`}>
+        <div className="menu-header">
+          <h3>{t.appMenu}</h3>
+          <button type="button" className="menu-close" onClick={() => setUserMenuOpen(false)}>✕</button>
+        </div>
+        <div className="menu-content">
+          <button className={activePage === 'planner' ? 'active' : ''} onClick={() => { setActivePage('planner'); setUserMenuOpen(false) }}>{t.planner}</button>
+          <button className={activePage === 'library' ? 'active' : ''} onClick={() => { setActivePage('library'); setUserMenuOpen(false) }}>{t.library}</button>
+          <button className={activePage === 'settings' ? 'active' : ''} onClick={() => { setActivePage('settings'); setUserMenuOpen(false) }}>{t.settings}</button>
+          <button className={activePage === 'privacy' ? 'active' : ''} onClick={() => { setActivePage('privacy'); setUserMenuOpen(false) }}>{t.privacyPolicy}</button>
+          <button className={activePage === 'impressum' ? 'active' : ''} onClick={() => { setActivePage('impressum'); setUserMenuOpen(false) }}>{t.impressum}</button>
+        </div>
+      </aside>
+
+      <main className="main-content">
+        <header className="app-header">
+          <button type="button" className="icon-button sheet-expand-button app-menu-button" aria-label={t.appMenu} onClick={() => setUserMenuOpen((prev) => !prev)}>
+            <span className="icon-only"><HamburgerIcon /></span>
+            <span className="button-label">{t.appMenu}</span>
+          </button>
+          <div className="app-brand-block" onClick={() => setShowSubtitle((prev) => !prev)} style={{ cursor: 'pointer' }}>
+            <div className="app-brand">{t.appTitle}</div>
+            <p className={showSubtitle ? 'force-show' : ''}>{t.appSub}</p>
+          </div>
+          <div className="topbar-controls">
+            {activePage === 'planner' && <button type="button" className="icon-button sheet-expand-button" aria-expanded={plannerPanelOpen} aria-label={plannerPanelOpen ? t.closePlanner : t.openRouteTools} onClick={(e) => { e.stopPropagation(); setPlannerPanelOpen((prev) => !prev) }}><span className="icon-only">{plannerPanelOpen ? <ArrowUpIcon /> : <ArrowDownIcon />}</span><span className="button-label">{plannerPanelOpen ? t.closePlanner : t.openPlanner}</span></button>}
+          </div>
+        </header>
+        {message && <p className="status info">{message}</p>}
+
+        {activePage === 'planner' && <section className={`planner-layout ${plannerPanelOpen ? '' : 'panel-collapsed'}`}>
         <section className="map-stack">
           <section ref={mapRef} className="map" onClick={() => setPlannerPanelOpen(false)}>
             <button type="button" className="mobile-planner-toggle icon-button sheet-expand-button" aria-expanded={plannerPanelOpen} aria-label={plannerPanelOpen ? t.closePlanner : t.openRouteTools} onClick={(e) => { e.stopPropagation(); setPlannerPanelOpen((prev) => !prev) }}>{plannerPanelOpen ? <ArrowDownIcon /> : <ArrowUpIcon />}</button>
@@ -641,28 +740,31 @@ export default function App() {
               <span>{t.routeDetails}</span>
               <span className="icon-small" aria-hidden="true">{showRouteDetails ? <ArrowDownIcon /> : <ArrowUpIcon />}</span>
             </button>
-            {showRouteDetails && latestGpx && <section className="route-details"><h3>{t.routeDetails}</h3><p><strong>{t.distance}:</strong> {routeStats.distanceKm.toFixed(1)} km</p><p><strong>{t.ascent}:</strong> {Math.round(routeStats.ascentM)} m</p><p><strong>{t.descent}:</strong> {Math.round(routeStats.descentM)} m</p>{routeStats.rawSummary && <p>{routeStats.rawSummary}</p>}<ElevationChart profile={routeStats.elevationProfile} title={t.elevationProfile} legend={t.steepLegend} hoverHint={t.elevationFocusHint} activeDistanceM={activeElevationPoint?.distanceM} onHoverPoint={setActiveElevationPoint} onLeave={() => setActiveElevationPoint(null)} /></section>}
+          {showRouteDetails && latestGpx && <section className="route-details"><h3>{t.routeDetails}</h3><p><strong>{t.distance}:</strong> {routeStats.distanceKm.toFixed(1)} km</p><p><strong>{t.ascent}:</strong> {Math.round(routeStats.ascentM)} m</p><p><strong>{t.descent}:</strong> {Math.round(routeStats.descentM)} m</p>{routeStats.rawSummary && <p>{routeStats.rawSummary}</p>}<ElevationChart profile={routeStats.elevationProfile} title={t.elevationProfile} legend={t.steepLegend} hoverHint={t.elevationFocusHint} activeDistanceM={activeElevationPoint?.distanceM} onHoverPoint={setActiveElevationPoint} onLeave={() => setActiveElevationPoint(null)} isExpanded={chartExpanded} onToggleExpand={() => setChartExpanded((prev) => !prev)} t={t} /></section>}
             {!latestGpx && <p className="route-bottom-sheet-empty">{t.routeDetailsUnavailable}</p>}
           </section>
         </section>
         <aside className="panel planner-panel">
         <div className="planner-panel-head"><h2>{t.plannerHeading}</h2><button type="button" className="planner-mobile-close" aria-label={t.closePlanner} onClick={() => setPlannerPanelOpen(false)}>✕</button></div><p>{t.addPinsHint}</p>
         <label>{t.profile}</label>
-        <select value={activeProfile} onChange={(e) => setActiveProfile(e.target.value)}>
-          <optgroup label="Standard">
-            {profiles.map((profile) => <option key={profile.slug} value={profile.brouter_profile_id}>{profile.name}</option>)}
-          </optgroup>
-          {customProfiles.length > 0 && (
-            <optgroup label={t.customProfiles}>
-              {customProfiles.map((p) => <option key={p.id} value={`custom:${p.id}`}>{p.name}</option>)}
-            </optgroup>
-          )}
+        <select value={activeProfile} onChange={(e) => { setActiveProfile(e.target.value); setIsExternalRoute(false); }}>
+          {profiles.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+          <option value="custom">{t.customProfile}</option>
         </select>
+        {activeProfile === 'custom' && (
+          <textarea
+            className="custom-profile-area"
+            value={customProfileContent}
+            onChange={(e) => setCustomProfileContent(e.target.value)}
+            placeholder={t.customProfilePlaceholder}
+            rows={5}
+          />
+        )}
         <label>{t.title}</label><input value={title} onChange={(e) => setTitle(e.target.value)} />
         <label>{t.findPlace}</label><input value={placeQuery} onChange={(e) => setPlaceQuery(e.target.value)} placeholder={t.placeSearchPlaceholder} />
         {(searchingPlaces || placeResults.length > 0 || (placeQuery.trim().length >= 3 && !placeResults.length)) && <div className="place-results">{searchingPlaces && <small>{t.searchingPlaces}</small>}{!searchingPlaces && !placeResults.length && <small>{t.noPlacesFound}</small>}{!searchingPlaces && placeResults.map((place) => <button key={place.id} type="button" className="place-result" onClick={() => addWaypoint(place.label, place.lon, place.lat)}>{place.label}</button>)}</div>}
-        <WaypointList waypoints={waypoints} setWaypoints={setWaypoints} />
-        <button onClick={() => setWaypoints([])}>{t.clearPins}</button>
+        <WaypointList waypoints={waypoints} setWaypoints={(val) => { setWaypoints(val); setIsExternalRoute(false); }} />
+        <button onClick={() => { setWaypoints([]); setIsExternalRoute(false); }}>{t.clearPins}</button>
         <button onClick={saveGeneratedRoute} disabled={!latestGpx}>{t.saveGenerated}</button>
         {latestGpx && <p className="status info inline">{t.routeReady}</p>}
       </aside></section>}
@@ -672,7 +774,7 @@ export default function App() {
           <label className="upload">{t.uploadGpx}<input type="file" accept=".gpx,application/gpx+xml" onChange={(e) => setUploadGpxFile(e.target.files?.[0] ?? null)} /></label>
           <button type="button" onClick={uploadGpx} disabled={!uploadGpxFile}>{t.uploadRouteButton}</button></div>
         <div className="panel">{!savedRoutes.length && <p>{t.noSaved}</p>}
-          {savedRoutes.map((route) => <article className="route-card" key={route.id}><div className="route-card-head"><strong>{route.title}</strong></div><div className="quick-actions"><button onClick={() => openRoute(route)}>{t.openGpx}</button><button onClick={() => loadRouteToMap(route)}>{t.loadOnMap}</button><button onClick={() => setSavedRoutes((prev) => prev.filter((x) => x.id !== route.id))}>{t.remove}</button></div></article>)}
+          {savedRoutes.map((route) => <article className="route-card" key={route.id}><div className="route-card-head"><strong>{route.title}</strong></div><div className="quick-actions"><button onClick={() => openRoute(route)}>{t.downloadGpx}</button><button onClick={() => loadRouteToMap(route)}>{t.loadOnMap}</button><button onClick={() => setSavedRoutes((prev) => prev.filter((x) => x.id !== route.id))}>{t.remove}</button></div></article>)}
         </div>
       </section>}
 
@@ -689,36 +791,38 @@ export default function App() {
           </select>
         </div>
 
-        <div className="panel upload-panel">
-          <h3>{t.customProfiles}</h3>
-          <p>{t.addPinsHint}</p>
-          <label>{t.profileName}</label>
-          <input value={uploadProfileName} onChange={(e) => setUploadProfileName(e.target.value)} placeholder="e.g. My Gravel Profile" />
-          <label className="upload">{t.uploadProfile}<input type="file" accept=".brf" onChange={(e) => setUploadProfileFile(e.target.files?.[0] ?? null)} /></label>
-          <button type="button" onClick={async () => {
-            if (!uploadProfileFile) return
-            const content = await uploadProfileFile.text()
-            setCustomProfiles(prev => [{ id: crypto.randomUUID(), name: (uploadProfileName || uploadProfileFile.name.replace('.brf', '')).trim(), content }, ...prev])
-            setUploadProfileFile(null)
-            setUploadProfileName('')
-          }} disabled={!uploadProfileFile}>{t.apply}</button>
+        <div className="panel">
+          <h3>{t.routingProfiles}</h3>
+          <div className="add-profile-form">
+            <label>{t.profileName}</label>
+            <input value={newProfileName} onChange={(e) => setNewProfileName(e.target.value)} placeholder="e.g. My Custom MTB" />
+            <label>{t.profileContent}</label>
+            <textarea
+              className="custom-profile-area"
+              value={newProfileContent}
+              onChange={(e) => setNewProfileContent(e.target.value)}
+              placeholder={t.customProfilePlaceholder}
+              rows={5}
+            />
+            <input type="file" accept=".brf" onChange={handleProfileUpload} />
+            <button onClick={addCustomProfile} disabled={!newProfileName || !newProfileContent}>{t.addProfile}</button>
+          </div>
 
-          <div className="custom-profiles-list">
-            {!customProfiles.length && <p><small>{t.noCustomProfiles}</small></p>}
+          <div className="saved-profiles-list">
             {customProfiles.map((p) => (
-              <div key={p.id} className="route-card">
-                <div className="route-card-head"><strong>{p.name}</strong></div>
-                <div className="quick-actions">
-                  <button onClick={() => setCustomProfiles(prev => prev.filter(x => x.id !== p.id))}>{t.remove}</button>
-                </div>
+              <div key={p.id} className="saved-profile-item">
+                <span>{p.name}</span>
+                <button className="danger" onClick={() => deleteCustomProfile(p.id)}>{t.deleteProfile}</button>
               </div>
             ))}
           </div>
         </div>
+
         <button type="button" onClick={() => setActivePage('planner')}>{t.backToPlanner}</button>
       </section>}
 
-      {activePage === 'impressum' && <section className="panel legal-page"><h2>{t.impressumHeading}</h2><p>Bicly demo application.</p><p>Responsible for content: Bicly Project Team.</p><p>Contact: hello@bicly.local</p><p>Address: Example Street 1, 12345 Demo City</p><button type="button" onClick={() => setActivePage('planner')}>{t.backToPlanner}</button></section>}
-    </main>
+        {activePage === 'impressum' && <section className="panel legal-page"><h2>{t.impressumHeading}</h2><p>Bicly demo application.</p><p>Responsible for content: Bicly Project Team.</p><p>Contact: hello@bicly.local</p><p>Address: Example Street 1, 12345 Demo City</p><button type="button" onClick={() => setActivePage('planner')}>{t.backToPlanner}</button></section>}
+      </main>
+    </div>
   )
 }

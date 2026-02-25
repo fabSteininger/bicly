@@ -159,6 +159,15 @@ a { color: var(--accent); }
   flex: 1;
 }
 
+.map-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  height: 100%;
+  min-height: 0;
+  flex: 1;
+}
+
 .planner-layout.panel-collapsed .planner-panel {
   display: none;
 }

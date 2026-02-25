@@ -6,23 +6,37 @@ export const fetchBrouterRoute = async ({ profile, points, customProfileContent,
   params.set('alternativeidx', '0')
   params.set('format', 'gpx')
 
+  let profileToUse = profile || 'trekking'
+
   if (customProfileContent) {
-    const body = new URLSearchParams()
-    body.set('profile', customProfileContent)
-    const res = await fetch(`${BROUTER_DIRECT_URL}?${params.toString()}`, {
+    // 1. Upload custom profile to get a temporary profile ID
+    const uploadUrl = `${BROUTER_DIRECT_URL}/profile`
+    const uploadRes = await fetch(uploadUrl, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: body.toString(),
+      headers: {
+        'Content-Type': 'text/plain;charset=UTF-8',
+      },
+      body: customProfileContent,
       signal,
     })
-    if (!res.ok) throw new Error('BRouter request failed')
-    return res.text()
-  } else {
-    params.set('profile', profile || 'trekking')
-    const res = await fetch(`${BROUTER_DIRECT_URL}?${params.toString()}`, { signal })
-    if (!res.ok) throw new Error('BRouter request failed')
-    return res.text()
+
+    if (!uploadRes.ok) {
+      throw new Error(`Profile upload failed: ${uploadRes.status}`)
+    }
+
+    const uploadData = await uploadRes.json()
+    if (uploadData.profileid) {
+      profileToUse = uploadData.profileid
+    } else {
+      throw new Error(`Failed to get profile ID: ${uploadData.error || 'Unknown error'}`)
+    }
   }
+
+  // 2. Request route using the profile ID
+  params.set('profile', profileToUse)
+  const res = await fetch(`${BROUTER_DIRECT_URL}?${params.toString()}`, { signal })
+  if (!res.ok) throw new Error('BRouter request failed')
+  return res.text()
 }
 
 export const buildBrouterRouteUrl = ({ profile, points }) => {
@@ -34,8 +48,12 @@ export const buildBrouterRouteUrl = ({ profile, points }) => {
   return `${BROUTER_DIRECT_URL}?${params.toString()}`
 }
 
-export const loadProfiles = async () => [
-  { slug: 'trekking', name: 'Trekking', brouter_profile_id: 'trekking' },
-  { slug: 'fastbike', name: 'Fast Bike', brouter_profile_id: 'fastbike' },
-  { slug: 'shortest', name: 'Shortest', brouter_profile_id: 'shortest' },
+export const ROUTING_PROFILES = [
+  { id: 'trekking', name: 'Trekking', value: 'trekking' },
+  { id: 'fastbike', name: 'Fastbike', value: 'fastbike' },
+  { id: 'moped', name: 'Moped', value: 'moped' },
+  { id: 'car-test', name: 'Car (test)', value: 'car-test' },
+  { id: 'vm-forum_liegerad_schnell', name: 'Liegerad (schnell)', value: 'vm-forum_liegerad_schnell' },
 ]
+
+export const loadProfiles = async () => ROUTING_PROFILES

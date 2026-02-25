@@ -105,6 +105,7 @@ a { color: var(--accent); }
   display: flex;
   align-items: center;
   gap: 0.42rem;
+  margin-left: auto;
 }
 
 .icon-button {
@@ -163,32 +164,43 @@ a { color: var(--accent); }
   padding-right: 0.85rem;
 }
 
-.app-menu-button:hover {
-  background: var(--accent-soft);
-}
-
 .app-menu-button .icon-only {
   display: inline-flex;
 }
 
 .account-menu {
-  position: absolute;
-  right: 0;
-  top: calc(100% + 0.5rem);
-  width: 250px;
-  background: color-mix(in srgb, #ffffff 92%, transparent);
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  padding: 0.6rem;
+  position: fixed;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 280px;
+  background: #fff;
+  border-right: 1px solid var(--line);
+  padding: 1.2rem 1rem;
   display: flex;
   flex-direction: column;
-  gap: 0.45rem;
-  z-index: 95;
-  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.18);
+  gap: 0.5rem;
+  z-index: 200;
+  box-shadow: 10px 0 25px rgba(15, 23, 42, 0.12);
+  transform: translateX(-100%);
+  transition: transform 0.25s ease-in-out;
+}
+
+.account-menu.open {
+  transform: translateX(0);
+}
+
+@media (min-width: 641px) {
+  .app-shell {
+    transition: padding-left 0.25s ease-in-out;
+  }
+  .app-shell.menu-open {
+    padding-left: 290px;
+  }
 }
 
 .menu-header {
-  display: none;
+  display: flex;
   justify-content: space-between;
   align-items: center;
   padding-bottom: 0.8rem;
@@ -244,12 +256,10 @@ a { color: var(--accent); }
   overscroll-behavior: contain;
 }
 
-.map-stack {
-  display: flex;
-  flex-direction: column;
-  gap: 0.55rem;
-  min-height: 100%;
-  flex: 1;
+@media (min-width: 561px) {
+  .planner-layout {
+    flex-direction: row;
+  }
 }
 
 .map-stack {
@@ -305,6 +315,25 @@ a { color: var(--accent); }
   gap: 0.7rem;
   background: #fffffff2;
   backdrop-filter: blur(8px);
+}
+
+@media (min-width: 561px) {
+  .planner-panel {
+    position: relative;
+    top: 0;
+    left: 0;
+    width: 380px;
+    max-height: 100%;
+    height: 100%;
+    border-radius: 0;
+    border-left: 1px solid var(--line);
+    background: #fff;
+    backdrop-filter: none;
+    order: 2;
+  }
+  .map-stack {
+    order: 1;
+  }
 }
 
 .map {
@@ -662,12 +691,6 @@ a { color: var(--accent); }
 }
 
 @media (max-width: 840px) {
-  .account-menu {
-    right: auto;
-    left: 0;
-    width: min(280px, calc(100vw - 2rem));
-  }
-
   .library-grid {
     grid-template-columns: 1fr;
   }
@@ -710,15 +733,17 @@ a { color: var(--accent); }
   }
 
   .account-menu {
-    position: fixed;
-    inset: 0;
     width: 100% !important;
     height: 100dvh;
     border-radius: 0;
-    z-index: 150;
+    z-index: 250;
     background: #fff;
     padding: 1.2rem;
     backdrop-filter: none;
+    transform: translateX(-100%);
+  }
+  .account-menu.open {
+    transform: translateX(0);
   }
 
   .menu-header {

@@ -8,6 +8,7 @@ const mapStyle = 'https://tiles.openfreemap.org/styles/liberty'
 const ROUTE_SOURCE_ID = 'generated-route-source'
 const ROUTE_LAYER_ID = 'generated-route-layer'
 const STORAGE_KEY = 'bicly_saved_routes'
+const PLANNER_DRAFT_KEY = 'bicly_planner_draft'
 
 const emptyRouteGeoJson = { type: 'FeatureCollection', features: [] }
 
@@ -180,6 +181,19 @@ const parseGpxToGeoJson = (gpxText) => {
   }
 }
 
+
+const readPlannerDraft = () => {
+  try {
+    const raw = localStorage.getItem(PLANNER_DRAFT_KEY)
+    if (!raw) return null
+    const draft = JSON.parse(raw)
+    if (!draft || typeof draft !== 'object') return null
+    return draft
+  } catch {
+    return null
+  }
+}
+
 const ensureRouteLayer = (map) => {
   if (!map.getSource(ROUTE_SOURCE_ID)) map.addSource(ROUTE_SOURCE_ID, { type: 'geojson', data: emptyRouteGeoJson })
   if (!map.getLayer(ROUTE_LAYER_ID)) {
@@ -188,18 +202,19 @@ const ensureRouteLayer = (map) => {
 }
 
 export default function App() {
+  const plannerDraft = useMemo(() => readPlannerDraft(), [])
   const [lang, setLang] = useState('de')
   const t = TEXT[lang]
   const mapRef = useRef(null)
   const mapInstance = useRef(null)
   const mapMarkers = useRef([])
   const [activePage, setActivePage] = useState('planner')
-  const [waypoints, setWaypoints] = useState([])
+  const [waypoints, setWaypoints] = useState(() => Array.isArray(plannerDraft?.waypoints) ? plannerDraft.waypoints : [])
   const [profiles, setProfiles] = useState([])
-  const [activeProfile, setActiveProfile] = useState('trekking')
-  const [latestGpx, setLatestGpx] = useState('')
-  const [routeGeoJson, setRouteGeoJson] = useState(emptyRouteGeoJson)
-  const [title, setTitle] = useState('New Route')
+  const [activeProfile, setActiveProfile] = useState(() => typeof plannerDraft?.activeProfile === 'string' ? plannerDraft.activeProfile : 'trekking')
+  const [latestGpx, setLatestGpx] = useState(() => typeof plannerDraft?.latestGpx === 'string' ? plannerDraft.latestGpx : '')
+  const [routeGeoJson, setRouteGeoJson] = useState(() => plannerDraft?.routeGeoJson?.type === 'FeatureCollection' ? plannerDraft.routeGeoJson : emptyRouteGeoJson)
+  const [title, setTitle] = useState(() => typeof plannerDraft?.title === 'string' ? plannerDraft.title : 'New Route')
   const [uploadTitle, setUploadTitle] = useState('')
   const [uploadGpxFile, setUploadGpxFile] = useState(null)
   const [savedRoutes, setSavedRoutes] = useState(() => JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '[]'))
@@ -210,11 +225,29 @@ export default function App() {
   const [searchingPlaces, setSearchingPlaces] = useState(false)
   const [plannerPanelOpen, setPlannerPanelOpen] = useState(false)
   const [userMenuOpen, setUserMenuOpen] = useState(false)
-  const [showRouteDetails, setShowRouteDetails] = useState(false)
-  const [routeStats, setRouteStats] = useState(emptyRouteStats)
+  const [showRouteDetails, setShowRouteDetails] = useState(() => Boolean(plannerDraft?.showRouteDetails && plannerDraft?.latestGpx))
+  const [routeStats, setRouteStats] = useState(() => plannerDraft?.routeStats?.elevationProfile ? plannerDraft.routeStats : emptyRouteStats)
 
   useEffect(() => { localStorage.setItem(STORAGE_KEY, JSON.stringify(savedRoutes)) }, [savedRoutes])
-  useEffect(() => { loadProfiles().then((rows) => { setProfiles(rows); if (rows[0]) setActiveProfile(rows[0].brouter_profile_id) }) }, [])
+  useEffect(() => {
+    loadProfiles().then((rows) => {
+      setProfiles(rows)
+      if (!rows[0]) return
+      setActiveProfile((prev) => rows.some((profile) => profile.brouter_profile_id === prev) ? prev : rows[0].brouter_profile_id)
+    })
+  }, [])
+
+  useEffect(() => {
+    localStorage.setItem(PLANNER_DRAFT_KEY, JSON.stringify({
+      waypoints,
+      activeProfile,
+      latestGpx,
+      routeGeoJson,
+      title,
+      routeStats,
+      showRouteDetails,
+    }))
+  }, [waypoints, activeProfile, latestGpx, routeGeoJson, title, routeStats, showRouteDetails])
 
   useEffect(() => {
     if (!navigator.geolocation) return
@@ -265,7 +298,7 @@ export default function App() {
 
   useEffect(() => {
     if (!latestGpx) return
-    setShowRouteDetails(false)
+    setShowRouteDetails(true)
   }, [latestGpx])
 
   useEffect(() => {

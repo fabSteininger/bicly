@@ -8,16 +8,11 @@ const mapStyle = 'https://tiles.openfreemap.org/styles/liberty'
 const ROUTE_SOURCE_ID = 'generated-route-source'
 const ROUTE_LAYER_ID = 'generated-route-layer'
 const STORAGE_KEY = 'bicly_saved_routes'
+const PLANNER_DRAFT_KEY = 'bicly_planner_draft'
 
 const emptyRouteGeoJson = { type: 'FeatureCollection', features: [] }
 
 const emptyRouteStats = { distanceKm: 0, ascentM: 0, descentM: 0, rawSummary: '', elevationProfile: [] }
-
-const ExpandIcon = () => (
-  <svg viewBox="0 0 122.883 122.882" aria-hidden="true" focusable="false">
-    <path d="M0,61.441c0-16.966,6.877-32.327,17.996-43.445C29.115,6.877,44.475,0,61.441,0c16.967,0,32.327,6.877,43.446,17.996 c11.119,11.119,17.996,26.479,17.996,43.445c0,16.966-6.877,32.326-17.996,43.445c-11.119,11.118-26.479,17.995-43.446,17.995 c-16.966,0-32.326-6.877-43.445-17.995C6.877,93.768,0,78.407,0,61.441L0,61.441z M42.166,51.505 c-1.784-1.735-4.637-1.695-6.373,0.088c-1.735,1.784-1.695,4.637,0.088,6.372l22.521,21.839l3.142-3.23l-3.146,3.244 c1.792,1.737,4.652,1.693,6.391-0.099c0.049-0.052,0.098-0.104,0.145-0.158l22.084-21.596c1.783-1.735,1.822-4.588,0.088-6.372 c-1.736-1.784-4.588-1.823-6.373-0.088L61.531,70.284L42.166,51.505L42.166,51.505z M24.386,24.386 C14.903,33.869,9.038,46.97,9.038,61.441c0,14.471,5.865,27.572,15.349,37.055c9.482,9.483,22.583,15.349,37.055,15.349 s27.573-5.865,37.055-15.349c9.484-9.482,15.35-22.584,15.35-37.055c0-14.472-5.865-27.573-15.35-37.056 C89.014,14.903,75.912,9.038,61.441,9.038S33.869,14.903,24.386,24.386L24.386,24.386z" />
-  </svg>
-)
 
 const HamburgerIcon = () => (
   <svg viewBox="0 0 122.88 95.95" aria-hidden="true" focusable="false">
@@ -180,6 +175,19 @@ const parseGpxToGeoJson = (gpxText) => {
   }
 }
 
+
+const readPlannerDraft = () => {
+  try {
+    const raw = localStorage.getItem(PLANNER_DRAFT_KEY)
+    if (!raw) return null
+    const draft = JSON.parse(raw)
+    if (!draft || typeof draft !== 'object') return null
+    return draft
+  } catch {
+    return null
+  }
+}
+
 const ensureRouteLayer = (map) => {
   if (!map.getSource(ROUTE_SOURCE_ID)) map.addSource(ROUTE_SOURCE_ID, { type: 'geojson', data: emptyRouteGeoJson })
   if (!map.getLayer(ROUTE_LAYER_ID)) {
@@ -188,18 +196,19 @@ const ensureRouteLayer = (map) => {
 }
 
 export default function App() {
+  const plannerDraft = useMemo(() => readPlannerDraft(), [])
   const [lang, setLang] = useState('de')
   const t = TEXT[lang]
   const mapRef = useRef(null)
   const mapInstance = useRef(null)
   const mapMarkers = useRef([])
   const [activePage, setActivePage] = useState('planner')
-  const [waypoints, setWaypoints] = useState([])
+  const [waypoints, setWaypoints] = useState(() => Array.isArray(plannerDraft?.waypoints) ? plannerDraft.waypoints : [])
   const [profiles, setProfiles] = useState([])
-  const [activeProfile, setActiveProfile] = useState('trekking')
-  const [latestGpx, setLatestGpx] = useState('')
-  const [routeGeoJson, setRouteGeoJson] = useState(emptyRouteGeoJson)
-  const [title, setTitle] = useState('New Route')
+  const [activeProfile, setActiveProfile] = useState(() => typeof plannerDraft?.activeProfile === 'string' ? plannerDraft.activeProfile : 'trekking')
+  const [latestGpx, setLatestGpx] = useState(() => typeof plannerDraft?.latestGpx === 'string' ? plannerDraft.latestGpx : '')
+  const [routeGeoJson, setRouteGeoJson] = useState(() => plannerDraft?.routeGeoJson?.type === 'FeatureCollection' ? plannerDraft.routeGeoJson : emptyRouteGeoJson)
+  const [title, setTitle] = useState(() => typeof plannerDraft?.title === 'string' ? plannerDraft.title : 'New Route')
   const [uploadTitle, setUploadTitle] = useState('')
   const [uploadGpxFile, setUploadGpxFile] = useState(null)
   const [savedRoutes, setSavedRoutes] = useState(() => JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '[]'))
@@ -210,11 +219,29 @@ export default function App() {
   const [searchingPlaces, setSearchingPlaces] = useState(false)
   const [plannerPanelOpen, setPlannerPanelOpen] = useState(false)
   const [userMenuOpen, setUserMenuOpen] = useState(false)
-  const [showRouteDetails, setShowRouteDetails] = useState(false)
-  const [routeStats, setRouteStats] = useState(emptyRouteStats)
+  const [showRouteDetails, setShowRouteDetails] = useState(() => Boolean(plannerDraft?.latestGpx))
+  const [routeStats, setRouteStats] = useState(() => plannerDraft?.routeStats?.elevationProfile ? plannerDraft.routeStats : emptyRouteStats)
 
   useEffect(() => { localStorage.setItem(STORAGE_KEY, JSON.stringify(savedRoutes)) }, [savedRoutes])
-  useEffect(() => { loadProfiles().then((rows) => { setProfiles(rows); if (rows[0]) setActiveProfile(rows[0].brouter_profile_id) }) }, [])
+  useEffect(() => {
+    loadProfiles().then((rows) => {
+      setProfiles(rows)
+      if (!rows[0]) return
+      setActiveProfile((prev) => rows.some((profile) => profile.brouter_profile_id === prev) ? prev : rows[0].brouter_profile_id)
+    })
+  }, [])
+
+  useEffect(() => {
+    localStorage.setItem(PLANNER_DRAFT_KEY, JSON.stringify({
+      waypoints,
+      activeProfile,
+      latestGpx,
+      routeGeoJson,
+      title,
+      routeStats,
+      showRouteDetails,
+    }))
+  }, [waypoints, activeProfile, latestGpx, routeGeoJson, title, routeStats, showRouteDetails])
 
   useEffect(() => {
     if (!navigator.geolocation) return
@@ -265,7 +292,7 @@ export default function App() {
 
   useEffect(() => {
     if (!latestGpx) return
-    setShowRouteDetails(false)
+    setShowRouteDetails(true)
   }, [latestGpx])
 
   useEffect(() => {
@@ -323,30 +350,32 @@ export default function App() {
         </div>
         <div className="topbar-controls">
           <button type="button" className="icon-button app-menu-button" aria-label={t.appMenu} onClick={() => setUserMenuOpen((prev) => !prev)}><span className="button-label">{t.appMenu}</span><span className="icon-only"><HamburgerIcon /></span></button>
-          {activePage === 'planner' && <button type="button" className="icon-button" aria-label={t.openRouteTools} onClick={(e) => { e.stopPropagation(); setPlannerPanelOpen(true) }}><ExpandIcon /></button>}
+          {activePage === 'planner' && <button type="button" className="icon-button sheet-expand-button" aria-expanded={plannerPanelOpen} aria-label={plannerPanelOpen ? t.closePlanner : t.openRouteTools} onClick={(e) => { e.stopPropagation(); setPlannerPanelOpen((prev) => !prev) }}><span aria-hidden="true">{plannerPanelOpen ? '▾' : '▴'}</span></button>}
           {userMenuOpen && <div className="account-menu"><button className={activePage === 'planner' ? 'active' : ''} onClick={() => { setActivePage('planner'); setUserMenuOpen(false) }}>{t.planner}</button><button className={activePage === 'library' ? 'active' : ''} onClick={() => { setActivePage('library'); setUserMenuOpen(false) }}>{t.library}</button><button className={activePage === 'privacy' ? 'active' : ''} onClick={() => { setActivePage('privacy'); setUserMenuOpen(false) }}>{t.privacyPolicy}</button><button className={activePage === 'impressum' ? 'active' : ''} onClick={() => { setActivePage('impressum'); setUserMenuOpen(false) }}>{t.impressum}</button><label>{t.language}<select value={lang} onChange={(e) => setLang(e.target.value)}><option value="en">English</option><option value="de">Deutsch</option></select></label></div>}
         </div>
       </header>
       {message && <p className="status info">{message}</p>}
 
       {activePage === 'planner' && <section className={`planner-layout ${plannerPanelOpen ? '' : 'panel-collapsed'}`}>
-        <section ref={mapRef} className="map" onClick={() => setPlannerPanelOpen(false)}>
-          <button type="button" className="mobile-planner-toggle icon-button" aria-label={t.openRouteTools} onClick={(e) => { e.stopPropagation(); setPlannerPanelOpen(true) }}><ExpandIcon /></button>
-        </section>
-        <section className={`route-bottom-sheet ${showRouteDetails ? 'open' : 'closed'}`}>
-          <button
-            type="button"
-            className="route-bottom-sheet-toggle"
-            aria-expanded={showRouteDetails}
-            aria-label={showRouteDetails ? t.closeRouteDetailsSheet : t.openRouteDetailsSheet}
-            onClick={() => setShowRouteDetails((prev) => !prev)}
-            disabled={!latestGpx}
-          >
-            <span>{t.routeDetails}</span>
-            <span aria-hidden="true">{showRouteDetails ? '▾' : '▴'}</span>
-          </button>
-          {showRouteDetails && latestGpx && <section className="route-details"><h3>{t.routeDetails}</h3><p><strong>{t.distance}:</strong> {routeStats.distanceKm.toFixed(1)} km</p><p><strong>{t.ascent}:</strong> {Math.round(routeStats.ascentM)} m</p><p><strong>{t.descent}:</strong> {Math.round(routeStats.descentM)} m</p>{routeStats.rawSummary && <p>{routeStats.rawSummary}</p>}<ElevationChart profile={routeStats.elevationProfile} title={t.elevationProfile} legend={t.steepLegend} /></section>}
-          {!latestGpx && <p className="route-bottom-sheet-empty">{t.routeDetailsUnavailable}</p>}
+        <section className="map-stack">
+          <section ref={mapRef} className="map" onClick={() => setPlannerPanelOpen(false)}>
+            <button type="button" className="mobile-planner-toggle icon-button sheet-expand-button" aria-expanded={plannerPanelOpen} aria-label={plannerPanelOpen ? t.closePlanner : t.openRouteTools} onClick={(e) => { e.stopPropagation(); setPlannerPanelOpen((prev) => !prev) }}><span aria-hidden="true">{plannerPanelOpen ? '▾' : '▴'}</span></button>
+          </section>
+          <section className={`route-bottom-sheet ${showRouteDetails ? 'open' : 'closed'}`}>
+            <button
+              type="button"
+              className="route-bottom-sheet-toggle"
+              aria-expanded={showRouteDetails}
+              aria-label={showRouteDetails ? t.closeRouteDetailsSheet : t.openRouteDetailsSheet}
+              onClick={() => setShowRouteDetails((prev) => !prev)}
+              disabled={!latestGpx}
+            >
+              <span>{t.routeDetails}</span>
+              <span aria-hidden="true">{showRouteDetails ? '▾' : '▴'}</span>
+            </button>
+            {showRouteDetails && latestGpx && <section className="route-details"><h3>{t.routeDetails}</h3><p><strong>{t.distance}:</strong> {routeStats.distanceKm.toFixed(1)} km</p><p><strong>{t.ascent}:</strong> {Math.round(routeStats.ascentM)} m</p><p><strong>{t.descent}:</strong> {Math.round(routeStats.descentM)} m</p>{routeStats.rawSummary && <p>{routeStats.rawSummary}</p>}<ElevationChart profile={routeStats.elevationProfile} title={t.elevationProfile} legend={t.steepLegend} /></section>}
+            {!latestGpx && <p className="route-bottom-sheet-empty">{t.routeDetailsUnavailable}</p>}
+          </section>
         </section>
         <aside className="panel planner-panel">
         <div className="planner-panel-head"><h2>{t.plannerHeading}</h2><button type="button" className="planner-mobile-close" aria-label={t.closePlanner} onClick={() => setPlannerPanelOpen(false)}>✕</button></div><p>{t.addPinsHint}</p>

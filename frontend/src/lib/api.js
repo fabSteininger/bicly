@@ -14,7 +14,10 @@ export const fetchBrouterRoute = async ({ profile, points, signal }) => {
       body: profile,
       signal,
     })
-    if (!res.ok) throw new Error('BRouter custom profile request failed')
+    if (!res.ok) {
+      const errorText = await res.text()
+      throw new Error(errorText || 'BRouter custom profile request failed')
+    }
     return res.text()
   }
 
@@ -25,7 +28,10 @@ export const fetchBrouterRoute = async ({ profile, points, signal }) => {
   params.set('format', 'gpx')
 
   const res = await fetch(`${BROUTER_DIRECT_URL}?${params.toString()}`, { signal })
-  if (!res.ok) throw new Error('BRouter request failed')
+  if (!res.ok) {
+    const errorText = await res.text()
+    throw new Error(errorText || 'BRouter request failed')
+  }
   return res.text()
 }
 

@@ -239,7 +239,14 @@ const ElevationChart = ({ profile, title, legend, hoverHint, activeDistanceM, on
         intersect: false,
         callbacks: {
           title: (items) => `${(items[0].parsed.x / 1000).toFixed(1)} km`,
-          label: (item) => `${Math.round(item.parsed.y)} m`,
+          label: (item) => {
+            const point = displayProfile[item.dataIndex]
+            const lines = [`${Math.round(item.parsed.y)} m`]
+            if (point && Number.isFinite(point.slopeDeg)) {
+              lines.push(`Gradient: ${Math.round(point.slopeDeg)}°`)
+            }
+            return lines
+          },
         },
       },
       verticalLine: {
@@ -453,6 +460,7 @@ export default function App() {
   const [newProfileContent, setNewProfileContent] = useState('')
   const [savedRoutes, setSavedRoutes] = useState(() => JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '[]'))
   const [message, setMessage] = useState('')
+  const [routingError, setRoutingError] = useState('')
   const [userLocation, setUserLocation] = useState(null)
   const [placeQuery, setPlaceQuery] = useState('')
   const [placeResults, setPlaceResults] = useState([])
@@ -624,16 +632,17 @@ export default function App() {
     const isCustomSaved = customProfiles.find((p) => p.id === activeProfile)
     const finalProfile = isCustomSaved ? isCustomSaved.content : profileToUse
 
+    setRoutingError('')
     fetchBrouterRoute({ profile: finalProfile, points: brouterPoints, signal: controller.signal })
       .then((text) => { setLatestGpx(text); setRouteGeoJson(parseGpxToGeoJson(text)); setRouteStats(parseGpxStats(text)) })
-      .catch(() => {})
+      .catch((err) => {
+        if (err.name !== 'AbortError') {
+          setRoutingError(err.message)
+        }
+      })
     return () => controller.abort()
   }, [activeProfile, customProfileContent, brouterPoints, waypoints.length, isExternalRoute])
 
-  useEffect(() => {
-    if (!latestGpx) return
-    setShowRouteDetails(true)
-  }, [latestGpx])
 
   useEffect(() => {
     if (activePage !== 'planner') setActiveElevationPoint(null)
@@ -668,6 +677,20 @@ export default function App() {
     setUploadGpxFile(null)
     setUploadTitle('')
     setMessage(t.statusUploaded)
+  }
+
+  const downloadCurrentRoute = () => {
+    if (!latestGpx) return
+    const blob = new Blob([latestGpx], { type: 'application/gpx+xml' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    const safeTitle = (title || 'route').replace(/[./\\]/g, '_')
+    a.download = `${safeTitle}.gpx`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
   }
 
   const openRoute = (route) => {
@@ -792,7 +815,7 @@ export default function App() {
         {activePage === 'planner' && <section className="flex-1 flex min-h-0 relative">
         <section className="flex-1 flex flex-col min-w-0 relative">
           <section ref={mapRef} className="flex-1 min-h-0 relative" onClick={() => setPlannerPanelOpen(false)}>
-            <button type="button" className="md:hidden absolute top-4 right-4 z-[100] p-2 bg-white dark:bg-slate-800 rounded-full shadow-lg" aria-expanded={plannerPanelOpen} aria-label={plannerPanelOpen ? t.closePlanner : t.openRouteTools} onClick={(e) => { e.stopPropagation(); setPlannerPanelOpen((prev) => !prev) }}>{plannerPanelOpen ? <ArrowDownIcon /> : <ArrowUpIcon />}</button>
+            <button type="button" className="md:hidden absolute top-20 right-4 z-[100] p-2 bg-white dark:bg-slate-800 rounded-full shadow-lg" aria-expanded={plannerPanelOpen} aria-label={plannerPanelOpen ? t.closePlanner : t.openRouteTools} onClick={(e) => { e.stopPropagation(); setPlannerPanelOpen((prev) => !prev) }}>{plannerPanelOpen ? <ArrowDownIcon /> : <ArrowUpIcon />}</button>
           </section>
           <section className={`flex flex-col overflow-hidden bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 transition-all duration-300 ${showRouteDetails ? 'max-h-[60%]' : 'max-h-12'}`}>
             <button
@@ -864,9 +887,11 @@ export default function App() {
           </div>
         </div>
         <WaypointList waypoints={waypoints} setWaypoints={(val) => { setWaypoints(val); setIsExternalRoute(false); }} onMove={moveWaypoint} />
+        {routingError && <div className="p-3 mb-4 text-xs font-mono bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 border border-red-100 dark:border-red-900/30 rounded-xl overflow-x-auto whitespace-pre-wrap">{routingError}</div>}
         <div className="flex flex-col gap-2 mt-auto">
           <button className={btnSecondary} onClick={() => { setWaypoints([]); setIsExternalRoute(false); }}>{t.clearPins}</button>
           <button className={btnPrimary} onClick={saveGeneratedRoute} disabled={!latestGpx}>{t.saveGenerated}</button>
+          <button className={btnSecondary} onClick={downloadCurrentRoute} disabled={!latestGpx}>{t.downloadGpx}</button>
         </div>
         {latestGpx && <p className="status info inline">{t.routeReady}</p>}
       </aside></section>}
@@ -908,7 +933,6 @@ export default function App() {
           <p>We process route planning data only in your browser and keep your saved GPX files in local storage on this device.</p>
           <p>When generating routes and searching places, requests are sent to external services (BRouter and Nominatim/OpenStreetMap) to return route and search results.</p>
           <p>No account is required and no central profile storage is used in this demo.</p>
-          <button className={`${btnPrimary} mt-4 self-start`} type="button" onClick={() => setActivePage('planner')}>{t.backToPlanner}</button>
         </div>
       </section>}
 
@@ -966,7 +990,6 @@ export default function App() {
           <p>Responsible for content: Bicly Project Team.</p>
           <p>Contact: hello@bicly.local</p>
           <p>Address: Example Street 1, 12345 Demo City</p>
-          <button className={`${btnPrimary} mt-4 self-start`} type="button" onClick={() => setActivePage('planner')}>{t.backToPlanner}</button>
         </div>
       </section>}
       </main>

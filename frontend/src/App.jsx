@@ -342,6 +342,7 @@ export default function App() {
   const [placeResults, setPlaceResults] = useState([])
   const [searchingPlaces, setSearchingPlaces] = useState(false)
   const [plannerPanelOpen, setPlannerPanelOpen] = useState(false)
+  const [showSubtitle, setShowSubtitle] = useState(false)
   const [userMenuOpen, setUserMenuOpen] = useState(false)
   const [headerExpanded, setHeaderExpanded] = useState(false)
   const [showRouteDetails, setShowRouteDetails] = useState(() => Boolean(plannerDraft?.latestGpx))
@@ -389,6 +390,11 @@ export default function App() {
     m.addControl(new maplibregl.NavigationControl(), 'top-right')
     m.on('load', () => {
       ensureRouteLayer(m)
+      if (waypoints.length > 0) {
+        const bounds = new maplibregl.LngLatBounds()
+        waypoints.forEach((p) => bounds.extend([p.lon, p.lat]))
+        m.fitBounds(bounds, { padding: 50, maxZoom: 15, animate: false })
+      }
       setMap(m)
     })
     m.on('style.load', () => {
@@ -434,8 +440,17 @@ export default function App() {
   useEffect(() => {
     if (!map || !map.isStyleLoaded()) return
     ensureRouteLayer(map)
-    map.getSource(ROUTE_SOURCE_ID)?.setData(routeGeoJson)
+    // Small timeout to ensure source is ready if just added
+    const timeout = setTimeout(() => {
+      map.getSource(ROUTE_SOURCE_ID)?.setData(routeGeoJson)
+    }, 0)
+    return () => clearTimeout(timeout)
   }, [map, routeGeoJson])
+
+  useEffect(() => {
+    if (!map || !userLocation || waypoints.length > 0) return
+    map.flyTo({ center: [userLocation.lon, userLocation.lat], zoom: 12 })
+  }, [map, userLocation, waypoints.length === 0])
 
   useEffect(() => {
     if (!map || !map.isStyleLoaded()) return
@@ -516,10 +531,10 @@ export default function App() {
 
   return (
     <main className="app-shell">
-      <header className={`app-header ${headerExpanded ? 'expanded' : ''}`}>
-        <div className="app-brand-block" onClick={() => setHeaderExpanded(!headerExpanded)} style={{ cursor: 'pointer' }}>
+      <header className="app-header">
+        <div className="app-brand-block" onClick={() => setShowSubtitle((prev) => !prev)} style={{ cursor: 'pointer' }}>
           <div className="app-brand">{t.appTitle}</div>
-          <p>{t.appSub}</p>
+          <p className={showSubtitle ? 'force-show' : ''}>{t.appSub}</p>
         </div>
         <div className="topbar-controls">
           <button type="button" className="icon-button app-menu-button" aria-label={t.appMenu} onClick={() => setUserMenuOpen((prev) => !prev)}><span className="icon-only"><HamburgerIcon /></span><span className="button-label">{t.appMenu}</span></button>

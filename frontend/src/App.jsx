@@ -19,14 +19,16 @@ import { buildBrouterRouteUrl, loadProfiles, fetchBrouterRoute } from './lib/api
 const verticalLinePlugin = {
   id: 'verticalLine',
   afterDraw: (chart) => {
-    const { activeDistanceM, profile } = chart.options.plugins.verticalLine || {}
+    const { activeDistanceM, profile, theme } = chart.options.plugins.verticalLine || {}
     if (activeDistanceM !== undefined && activeDistanceM !== null) {
       const { ctx, chartArea: { top, bottom }, scales: { x, y } } = chart
       const xPos = x.getPixelForValue(activeDistanceM)
+      const inkColor = theme === 'dark' ? '#e8eaed' : '#101418'
+
       if (xPos >= chart.chartArea.left && xPos <= chart.chartArea.right) {
         ctx.save()
         ctx.beginPath()
-        ctx.strokeStyle = '#0f172a'
+        ctx.strokeStyle = inkColor
         ctx.lineWidth = 1
         ctx.setLineDash([3, 3])
         ctx.moveTo(xPos, top)
@@ -43,10 +45,10 @@ const verticalLinePlugin = {
             const yPos = y.getPixelForValue(activePoint.elevationM)
             ctx.save()
             ctx.beginPath()
-            ctx.fillStyle = '#0f172a'
+            ctx.fillStyle = inkColor
             ctx.arc(xPos, yPos, 4, 0, 2 * Math.PI)
             ctx.fill()
-            ctx.strokeStyle = '#fff'
+            ctx.strokeStyle = theme === 'dark' ? '#1e1e1e' : '#ffffff'
             ctx.lineWidth = 1.5
             ctx.stroke()
             ctx.restore()
@@ -148,6 +150,9 @@ const TEXT = {
     elevationProfile: 'Elevation profile',
     slope: 'Slope',
     avoidFerries: 'Avoid ferries',
+    theme: 'Theme',
+    light: 'Light',
+    dark: 'Dark',
     openRouteDetailsSheet: 'Open route details', closeRouteDetailsSheet: 'Close route details',
     routeDetailsUnavailable: 'Generate a route to see distance and elevation details.',
   },
@@ -181,15 +186,22 @@ const TEXT = {
     elevationProfile: 'Höhenprofil',
     slope: 'Steigung',
     avoidFerries: 'Fähren vermeiden',
+    theme: 'Farbschema',
+    light: 'Hell',
+    dark: 'Dunkel',
     openRouteDetailsSheet: 'Routendetails öffnen', closeRouteDetailsSheet: 'Routendetails schließen',
     routeDetailsUnavailable: 'Erzeuge eine Route, um Distanz- und Höhendetails zu sehen.',
   },
 }
 
-const ElevationChart = ({ profile, title, activeDistanceM, onHoverPoint, onLeave, t }) => {
+const ElevationChart = ({ profile, title, activeDistanceM, onHoverPoint, onLeave, t, theme }) => {
   if (!profile.length) return null
 
   const totalDistM = profile[profile.length - 1].distanceM
+  const isDark = theme === 'dark'
+  const accentColor = isDark ? '#8ab4f8' : '#1f6feb'
+  const inkColor = isDark ? '#e8eaed' : '#101418'
+  const gridColor = isDark ? '#3c4043' : '#d7dce2'
 
   const displayProfile = useMemo(() => {
     if (profile.length < 2 || totalDistM < 100000) return profile
@@ -211,8 +223,8 @@ const ElevationChart = ({ profile, title, activeDistanceM, onHoverPoint, onLeave
     datasets: [{
       data: displayProfile.map((p) => ({ x: p.distanceM, y: p.elevationM })),
       fill: true,
-      backgroundColor: 'rgba(168, 200, 255, 0.4)',
-      borderColor: '#1f6feb',
+      backgroundColor: isDark ? 'rgba(138, 180, 248, 0.2)' : 'rgba(168, 200, 255, 0.4)',
+      borderColor: accentColor,
       borderWidth: 2,
       pointRadius: 0,
       pointHitRadius: 10,
@@ -220,8 +232,9 @@ const ElevationChart = ({ profile, title, activeDistanceM, onHoverPoint, onLeave
       segment: {
         borderColor: (ctx) => {
           const point = profile[ctx.p1DataIndex]
-          if (!point) return '#1f6feb'
-          return point.slopeDeg >= 10 ? '#e22b2b' : point.slopeDeg >= 6 ? '#ef8f2e' : '#1f6feb'
+          if (!point) return accentColor
+          const slopeColor = point.slopeDeg >= 10 ? '#f28b82' : point.slopeDeg >= 6 ? '#fdd663' : accentColor
+          return slopeColor
         },
       },
     }],
@@ -252,6 +265,7 @@ const ElevationChart = ({ profile, title, activeDistanceM, onHoverPoint, onLeave
       verticalLine: {
         activeDistanceM,
         profile: displayProfile,
+        theme,
       },
     },
     scales: {
@@ -263,13 +277,18 @@ const ElevationChart = ({ profile, title, activeDistanceM, onHoverPoint, onLeave
           callback: (val) => `${(val / 1000).toFixed(1)} km`,
           maxTicksLimit: 6,
           includeBounds: true,
+          color: inkColor,
         },
         grid: { display: false },
       },
       y: {
         ticks: {
           callback: (val) => `${val}m`,
+          color: inkColor,
         },
+        grid: {
+          color: gridColor,
+        }
       },
     },
     onHover: (event, elements, chart) => {
@@ -421,6 +440,13 @@ const ensureRouteLayer = (map) => {
 export default function App() {
   const plannerDraft = useMemo(() => readPlannerDraft(), [])
   const [lang, setLang] = useState('de')
+  const [theme, setTheme] = useState(() => localStorage.getItem('bicly_theme') || 'light')
+
+  useEffect(() => {
+    document.body.setAttribute('data-theme', theme)
+    localStorage.setItem('bicly_theme', theme)
+  }, [theme])
+
   const t = TEXT[lang]
   const mapRef = useRef(null)
   const [map, setMap] = useState(null)
@@ -744,6 +770,11 @@ export default function App() {
             <p className={showSubtitle ? 'force-show' : ''}>{t.appSub}</p>
           </div>
           <div className="topbar-controls">
+            {activePage !== 'planner' && (
+              <button type="button" onClick={() => { setActivePage('planner'); setPlannerPanelOpen(true); }}>
+                {t.planner}
+              </button>
+            )}
           </div>
         </header>
         {message && <p className="status info">{message}</p>}
@@ -771,7 +802,7 @@ export default function App() {
                 <span><strong>{t.descent}:</strong> {Math.round(routeStats.descentM)} m</span>
               </div>
               {routeStats.rawSummary && <p>{routeStats.rawSummary}</p>}
-              <ElevationChart profile={routeStats.elevationProfile} title={t.elevationProfile} activeDistanceM={activeElevationPoint?.distanceM} onHoverPoint={setActiveElevationPoint} onLeave={() => setActiveElevationPoint(null)} t={t} />
+              <ElevationChart profile={routeStats.elevationProfile} title={t.elevationProfile} activeDistanceM={activeElevationPoint?.distanceM} onHoverPoint={setActiveElevationPoint} onLeave={() => setActiveElevationPoint(null)} t={t} theme={theme} />
             </section>
           )}
             {!latestGpx && <p className="route-bottom-sheet-empty">{t.routeDetailsUnavailable}</p>}
@@ -840,11 +871,22 @@ export default function App() {
         <h2>{t.settingsHeading}</h2>
         <div className="panel">
           <h3>{t.generalSettings}</h3>
-          <label>{t.language}</label>
-          <select value={lang} onChange={(e) => setLang(e.target.value)}>
-            <option value="en">English</option>
-            <option value="de">Deutsch</option>
-          </select>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <div>
+              <label>{t.language}</label>
+              <select value={lang} onChange={(e) => setLang(e.target.value)} style={{ width: '100%' }}>
+                <option value="en">English</option>
+                <option value="de">Deutsch</option>
+              </select>
+            </div>
+            <div>
+              <label>{t.theme}</label>
+              <select value={theme} onChange={(e) => setTheme(e.target.value)} style={{ width: '100%' }}>
+                <option value="light">{t.light}</option>
+                <option value="dark">{t.dark}</option>
+              </select>
+            </div>
+          </div>
         </div>
 
         <div className="panel">

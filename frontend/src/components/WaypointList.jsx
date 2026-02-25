@@ -4,17 +4,21 @@ import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } 
 import { CSS } from '@dnd-kit/utilities'
 
 function SortableWaypoint({ waypoint, onRemove }) {
-  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: waypoint.id })
-  const style = { transform: CSS.Transform.toString(transform), transition }
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: waypoint.id })
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.3 : 1,
+  }
 
   return (
-    <li ref={setNodeRef} style={style} className="waypoint-item">
-      <button className="drag" {...attributes} {...listeners}>⋮⋮</button>
+    <li ref={setNodeRef} style={style} className={`waypoint-item ${isDragging ? 'is-dragging' : ''}`}>
+      <button className="drag-handle" {...attributes} {...listeners} title="Drag to reorder">⋮⋮</button>
       <div className="waypoint-text">
-        <span>{waypoint.label}</span>
-        <small>{waypoint.lat.toFixed(5)}, {waypoint.lon.toFixed(5)}</small>
+        <span className="waypoint-label">{waypoint.label}</span>
+        <small className="waypoint-coords">{waypoint.lat.toFixed(5)}, {waypoint.lon.toFixed(5)}</small>
       </div>
-      <button onClick={() => onRemove(waypoint.id)}>✕</button>
+      <button className="remove-waypoint" onClick={() => onRemove(waypoint.id)} title="Remove waypoint">✕</button>
     </li>
   )
 }
@@ -53,15 +57,15 @@ export default function WaypointList({ waypoints, setWaypoints }) {
           ))}
         </ul>
       </SortableContext>
-      <DragOverlay>
+      <DragOverlay adjustScale={true}>
         {activeWaypoint && (
-          <div className="waypoint-item waypoint-overlay" aria-hidden="true">
-            <button className="drag" type="button">⋮⋮</button>
+          <div className="waypoint-item is-overlay" aria-hidden="true">
+            <button className="drag-handle" type="button">⋮⋮</button>
             <div className="waypoint-text">
-              <span>{activeWaypoint.label}</span>
-              <small>{activeWaypoint.lat.toFixed(5)}, {activeWaypoint.lon.toFixed(5)}</small>
+              <span className="waypoint-label">{activeWaypoint.label}</span>
+              <small className="waypoint-coords">{activeWaypoint.lat.toFixed(5)}, {activeWaypoint.lon.toFixed(5)}</small>
             </div>
-            <button type="button">✕</button>
+            <button className="remove-waypoint" type="button">✕</button>
           </div>
         )}
       </DragOverlay>

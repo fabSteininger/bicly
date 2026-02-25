@@ -122,7 +122,7 @@ const TEXT = {
     appTitle: 'Bicly', appSub: 'Ride-ready route planning with local GPX storage.', planner: 'Planner', library: 'Library',
     language: 'Language', profile: 'Routing profile', title: 'Route title', clearPins: 'Clear pins',
     saveGenerated: 'Save generated GPX', routeReady: 'Route generated and shown on map.',
-    addPinsHint: 'Click on the map to add pins. Drag and reorder on the left.',
+    addPinsHint: 'Click map to add pins. Sort list by dragging.',
     useLocationStart: 'Use my location as start', addMyLocation: 'Add my location point',
     findPlace: 'Find place', placeSearchPlaceholder: 'Search city, street, or POI', noPlacesFound: 'No places found',
     searchingPlaces: 'Searching...', uploadSection: 'Upload route', uploadGpx: 'Upload GPX',
@@ -135,6 +135,7 @@ const TEXT = {
     appMenu: 'App menu', openRouteTools: 'Expand route tools',
     privacyPolicy: 'Privacy policy', impressum: 'Impressum', backToPlanner: 'Back to planner',
     privacyHeading: 'Privacy policy', impressumHeading: 'Impressum',
+    licenses: 'Licenses', licensesHeading: 'Open source licenses',
     settings: 'Settings', settingsHeading: 'App settings',
     generalSettings: 'General settings', routingSettings: 'Routing settings',
     customProfile: 'Custom profile', customProfilePlaceholder: 'Paste your .brf profile here...',
@@ -153,7 +154,7 @@ const TEXT = {
     appTitle: 'Bicly', appSub: 'Fahrradfreundliche Routenplanung mit lokaler GPX-Bibliothek.', planner: 'Planer', library: 'Bibliothek',
     language: 'Sprache', profile: 'Routing-Profil', title: 'Routentitel', clearPins: 'Pins löschen',
     saveGenerated: 'Generierte GPX speichern', routeReady: 'Route erzeugt und auf der Karte angezeigt.',
-    addPinsHint: 'Klicke auf die Karte, um Pins hinzuzufügen. Links kannst du sie sortieren.',
+    addPinsHint: 'Karte klicken für Pins. Liste durch Ziehen sortieren.',
     useLocationStart: 'Meinen Standort als Start nutzen', addMyLocation: 'Meinen Standort als Punkt hinzufügen',
     findPlace: 'Ort suchen', placeSearchPlaceholder: 'Stadt, Straße oder POI suchen', noPlacesFound: 'Keine Orte gefunden',
     searchingPlaces: 'Suche...', uploadSection: 'Route hochladen', uploadGpx: 'GPX hochladen',
@@ -166,6 +167,7 @@ const TEXT = {
     appMenu: 'App-Menü', openRouteTools: 'Routenwerkzeuge aufklappen',
     privacyPolicy: 'Datenschutz', impressum: 'Impressum', backToPlanner: 'Zurück zum Planer',
     privacyHeading: 'Datenschutzerklärung', impressumHeading: 'Impressum',
+    licenses: 'Lizenzen', licensesHeading: 'Open-Source-Lizenzen',
     settings: 'Einstellungen', settingsHeading: 'App-Einstellungen',
     generalSettings: 'Allgemeine Einstellungen', routingSettings: 'Routing-Einstellungen',
     customProfile: 'Benutzerdefiniertes Profil', customProfilePlaceholder: 'Füge dein .brf Profil hier ein...',
@@ -709,6 +711,7 @@ export default function App() {
           <button className={activePage === 'settings' ? 'active' : ''} onClick={() => { setActivePage('settings'); setUserMenuOpen(false) }}>{t.settings}</button>
           <button className={activePage === 'privacy' ? 'active' : ''} onClick={() => { setActivePage('privacy'); setUserMenuOpen(false) }}>{t.privacyPolicy}</button>
           <button className={activePage === 'impressum' ? 'active' : ''} onClick={() => { setActivePage('impressum'); setUserMenuOpen(false) }}>{t.impressum}</button>
+          <button className={activePage === 'licenses' ? 'active' : ''} onClick={() => { setActivePage('licenses'); setUserMenuOpen(false) }}>{t.licenses}</button>
         </div>
       </aside>
 
@@ -852,6 +855,35 @@ export default function App() {
       </section>}
 
         {activePage === 'impressum' && <section className="panel legal-page"><h2>{t.impressumHeading}</h2><p>Bicly demo application.</p><p>Responsible for content: Bicly Project Team.</p><p>Contact: hello@bicly.local</p><p>Address: Example Street 1, 12345 Demo City</p><button type="button" onClick={() => setActivePage('planner')}>{t.backToPlanner}</button></section>}
+
+        {activePage === 'licenses' && (
+          <section className="panel legal-page">
+            <h2>{t.licensesHeading}</h2>
+            <div className="license-list" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <article>
+                <strong>React, dnd-kit, Chart.js, Vite</strong>
+                <p>Licensed under MIT License.</p>
+              </article>
+              <article>
+                <strong>MapLibre GL JS</strong>
+                <p>Licensed under BSD 3-Clause License.</p>
+              </article>
+              <article>
+                <strong>OpenFreeMap / OpenStreetMap</strong>
+                <p>&copy; OpenStreetMap contributors, ODbL.</p>
+              </article>
+              <article>
+                <strong>PocketBase</strong>
+                <p>Licensed under MIT License.</p>
+              </article>
+              <article>
+                <strong>BRouter</strong>
+                <p>Licensed under MIT License.</p>
+              </article>
+            </div>
+            <button type="button" onClick={() => setActivePage('planner')}>{t.backToPlanner}</button>
+          </section>
+        )}
       </main>
     </div>
   )

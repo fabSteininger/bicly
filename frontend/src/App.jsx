@@ -280,9 +280,11 @@ export default function App() {
   const [plannerPanelOpen, setPlannerPanelOpen] = useState(false)
   const [showSubtitle, setShowSubtitle] = useState(false)
   const [userMenuOpen, setUserMenuOpen] = useState(false)
+  const [headerExpanded, setHeaderExpanded] = useState(false)
   const [showRouteDetails, setShowRouteDetails] = useState(() => Boolean(plannerDraft?.latestGpx))
   const [routeStats, setRouteStats] = useState(() => plannerDraft?.routeStats?.elevationProfile ? plannerDraft.routeStats : emptyRouteStats)
   const [activeElevationPoint, setActiveElevationPoint] = useState(null)
+  const hasInitialFit = useRef(false)
 
   useEffect(() => { localStorage.setItem(STORAGE_KEY, JSON.stringify(savedRoutes)) }, [savedRoutes])
   useEffect(() => {
@@ -331,6 +333,10 @@ export default function App() {
       }
       setMap(m)
     })
+    m.on('style.load', () => {
+      ensureRouteLayer(m)
+      m.getSource(ROUTE_SOURCE_ID)?.setData(routeGeoJson)
+    })
     m.on('click', (e) => addWaypoint('', e.lngLat.lng, e.lngLat.lat))
 
     return () => {
@@ -338,8 +344,22 @@ export default function App() {
       mapMarkers.current = []
       m.remove()
       setMap(null)
+      hasInitialFit.current = false
     }
   }, [activePage])
+
+  useEffect(() => {
+    if (!map || hasInitialFit.current) return
+    if (waypoints.length > 0) {
+      const bounds = new maplibregl.LngLatBounds()
+      waypoints.forEach((p) => bounds.extend([p.lon, p.lat]))
+      map.fitBounds(bounds, { padding: 50, maxZoom: 15, animate: false })
+      hasInitialFit.current = true
+    } else if (userLocation) {
+      map.flyTo({ center: [userLocation.lon, userLocation.lat], zoom: 12 })
+      hasInitialFit.current = true
+    }
+  }, [map, userLocation, waypoints.length])
 
   useEffect(() => {
     if (!map) return

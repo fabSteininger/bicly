@@ -96,6 +96,13 @@ a { color: var(--accent); }
   fill: currentColor;
 }
 
+
+.sheet-expand-button {
+  font-size: 1.2rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
 .app-menu-button .icon-only {
   display: none;
 }
@@ -140,6 +147,16 @@ a { color: var(--accent); }
   display: flex;
   flex-direction: column;
   position: relative;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.map-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  min-height: 100%;
+  flex: 1;
 }
 
 .map-stack {
@@ -202,8 +219,8 @@ a { color: var(--accent); }
   border: 1px solid var(--line);
   border-radius: 18px;
   min-height: 300px;
-  height: auto;
-  flex: 1;
+  height: min(62dvh, 720px);
+  flex: none;
   overflow: hidden;
   box-shadow: 0 14px 30px rgba(18, 44, 84, 0.12);
 }
@@ -222,7 +239,8 @@ a { color: var(--accent); }
   border: 1px solid var(--line);
   border-radius: 16px;
   backdrop-filter: blur(8px);
-  box-shadow: 0 14px 30px rgba(18, 44, 84, 0.14);  max-height: min(40vh, 320px);
+  box-shadow: 0 14px 30px rgba(18, 44, 84, 0.14);
+  max-height: min(46dvh, 420px);
   padding-bottom: env(safe-area-inset-bottom, 0);
   overflow: hidden;
   display: flex;
@@ -528,10 +546,11 @@ a { color: var(--accent); }
 
   .map {
     min-height: 260px;
+    height: min(56dvh, 560px);
   }
 
   .route-bottom-sheet {
-    max-height: min(44vh, 380px);
+    max-height: min(46dvh, 400px);
   }
 }
 

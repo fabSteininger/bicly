@@ -121,7 +121,7 @@ const TEXT = {
   en: {
     appTitle: 'Bicly', appSub: 'Ride-ready route planning with local GPX storage.', planner: 'Planner', library: 'Library',
     language: 'Language', profile: 'Routing profile', title: 'Route title', clearPins: 'Clear pins',
-    saveGenerated: 'Save generated GPX', routeReady: 'Route generated and shown on map.',
+    saveGenerated: 'Download GPX', routeReady: 'Route generated and shown on map.',
     addPinsHint: 'Click map to add pins. Sort list by dragging.',
     useLocationStart: 'Use my location as start', addMyLocation: 'Add my location point',
     findPlace: 'Find place', placeSearchPlaceholder: 'Search city, street, or POI', noPlacesFound: 'No places found',
@@ -145,16 +145,16 @@ const TEXT = {
     saveProfile: 'Save profile', deleteProfile: 'Delete profile',
     expandChart: 'Expand chart', collapseChart: 'Collapse chart',
     distance: 'Distance', ascent: 'Ascent', descent: 'Descent',
-    elevationProfile: 'Elevation profile', steepLegend: 'Steepness (10°+ = red)',
+    elevationProfile: 'Elevation profile',
+    slope: 'Slope',
     avoidFerries: 'Avoid ferries',
     openRouteDetailsSheet: 'Open route details', closeRouteDetailsSheet: 'Close route details',
     routeDetailsUnavailable: 'Generate a route to see distance and elevation details.',
-    elevationFocusHint: 'Hover (desktop) or drag (touch) to highlight the matching map position.',
   },
   de: {
     appTitle: 'Bicly', appSub: 'Fahrradfreundliche Routenplanung mit lokaler GPX-Bibliothek.', planner: 'Planer', library: 'Bibliothek',
     language: 'Sprache', profile: 'Routing-Profil', title: 'Routentitel', clearPins: 'Pins löschen',
-    saveGenerated: 'Generierte GPX speichern', routeReady: 'Route erzeugt und auf der Karte angezeigt.',
+    saveGenerated: 'GPX herunterladen', routeReady: 'Route erzeugt und auf der Karte angezeigt.',
     addPinsHint: 'Karte klicken für Pins. Liste durch Ziehen sortieren.',
     useLocationStart: 'Meinen Standort als Start nutzen', addMyLocation: 'Meinen Standort als Punkt hinzufügen',
     findPlace: 'Ort suchen', placeSearchPlaceholder: 'Stadt, Straße oder POI suchen', noPlacesFound: 'Keine Orte gefunden',
@@ -178,11 +178,11 @@ const TEXT = {
     saveProfile: 'Profil speichern', deleteProfile: 'Profil löschen',
     expandChart: 'Profil vergrößern', collapseChart: 'Profil verkleinern',
     distance: 'Distanz', ascent: 'Anstieg', descent: 'Abstieg',
-    elevationProfile: 'Höhenprofil', steepLegend: 'Steigung (ab 10° = rot)',
+    elevationProfile: 'Höhenprofil',
+    slope: 'Steigung',
     avoidFerries: 'Fähren vermeiden',
     openRouteDetailsSheet: 'Routendetails öffnen', closeRouteDetailsSheet: 'Routendetails schließen',
     routeDetailsUnavailable: 'Erzeuge eine Route, um Distanz- und Höhendetails zu sehen.',
-    elevationFocusHint: 'Fahre mit der Maus darüber (Desktop) oder ziehe mit dem Finger, um die Kartenposition zu markieren.',
   },
 }
 
@@ -242,7 +242,8 @@ const ElevationChart = ({ profile, title, activeDistanceM, onHoverPoint, onLeave
             const point = displayProfile[item.dataIndex]
             const elevation = `${Math.round(item.parsed.y)} m`
             if (point && typeof point.slopeDeg === 'number') {
-              return `${elevation} (${point.slopeDeg.toFixed(1)}°)`
+              const label = t.slope || 'Slope'
+              return `${elevation} (${label}: ${point.slopeDeg.toFixed(1)}°)`
             }
             return elevation
           },
@@ -429,7 +430,7 @@ export default function App() {
   const [profiles, setProfiles] = useState([])
   const [customProfiles, setCustomProfiles] = useState(() => JSON.parse(localStorage.getItem('bicly_custom_profiles') || '[]'))
   const [activeProfile, setActiveProfile] = useState(() => typeof plannerDraft?.activeProfile === 'string' ? plannerDraft.activeProfile : 'trekking')
-  const [avoidFerries, setAvoidFerries] = useState(() => plannerDraft?.avoidFerries === true)
+  const [avoidFerries, setAvoidFerries] = useState(() => Boolean(plannerDraft?.avoidFerries))
   const [customProfileContent, setCustomProfileContent] = useState(() => localStorage.getItem('bicly_custom_profile_tmp') || '')
   const [latestGpx, setLatestGpx] = useState(() => typeof plannerDraft?.latestGpx === 'string' ? plannerDraft.latestGpx : '')
   const [routeGeoJson, setRouteGeoJson] = useState(() => plannerDraft?.routeGeoJson?.type === 'FeatureCollection' ? plannerDraft.routeGeoJson : emptyRouteGeoJson)
@@ -474,17 +475,17 @@ export default function App() {
     localStorage.setItem(PLANNER_DRAFT_KEY, JSON.stringify({
       waypoints,
       activeProfile,
+      avoidFerries,
       latestGpx,
       routeGeoJson,
       title,
       routeStats,
       showRouteDetails,
-      avoidFerries,
     }))
     if (activeProfile === 'custom') {
       localStorage.setItem('bicly_custom_profile_tmp', customProfileContent)
     }
-  }, [waypoints, activeProfile, customProfileContent, latestGpx, routeGeoJson, title, routeStats, showRouteDetails, avoidFerries])
+  }, [waypoints, activeProfile, customProfileContent, latestGpx, routeGeoJson, title, routeStats, showRouteDetails])
 
   useEffect(() => {
     if (!navigator.geolocation) return
@@ -551,6 +552,10 @@ export default function App() {
       const element = document.createElement('div')
       element.className = 'waypoint-marker'
       element.textContent = String(index + 1)
+      element.onclick = (e) => {
+        e.stopPropagation()
+        setWaypoints((prev) => prev.filter((p) => p.id !== point.id))
+      }
       mapMarkers.current.push(new maplibregl.Marker({ element }).setLngLat([point.lon, point.lat]).addTo(map))
     })
   }, [map, waypoints])
@@ -594,11 +599,11 @@ export default function App() {
     const isCustomSaved = customProfiles.find((p) => p.id === activeProfile)
     const finalProfile = isCustomSaved ? isCustomSaved.content : profileToUse
 
-    fetchBrouterRoute({ profile: finalProfile, points: brouterPoints, signal: controller.signal, avoidFerries })
+    fetchBrouterRoute({ profile: finalProfile, points: brouterPoints, avoidFerries, signal: controller.signal })
       .then((text) => { setLatestGpx(text); setRouteGeoJson(parseGpxToGeoJson(text)); setRouteStats(parseGpxStats(text)) })
       .catch(() => {})
     return () => controller.abort()
-  }, [activeProfile, customProfileContent, brouterPoints, waypoints.length, isExternalRoute, avoidFerries])
+  }, [activeProfile, customProfileContent, brouterPoints, waypoints.length, isExternalRoute])
 
   useEffect(() => {
     if (!latestGpx) return
@@ -627,14 +632,21 @@ export default function App() {
 
   const saveGeneratedRoute = () => {
     if (!latestGpx) return
-    setSavedRoutes((prev) => [{ id: crypto.randomUUID(), title: title.trim() || 'Route', gpx: latestGpx }, ...prev])
-    setMessage(t.statusSaved)
+    const blob = new Blob([latestGpx], { type: 'application/gpx+xml' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'download.gpx'
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
   }
 
   const uploadGpx = async () => {
     if (!uploadGpxFile) return
     const gpx = await uploadGpxFile.text()
-    if (!gpx.includes('<gpx') || !gpx.includes('http://www.topografix.com/GPX/1/1')) {
+    if (!gpx.includes('<gpx')) {
       setMessage(t.invalidGpx)
       return
     }
@@ -712,7 +724,7 @@ export default function App() {
           <button type="button" className="menu-close" onClick={() => setUserMenuOpen(false)}>✕</button>
         </div>
         <div className="menu-content">
-          <button className={activePage === 'planner' ? 'active' : ''} onClick={() => { setActivePage('planner'); setUserMenuOpen(false) }}>{t.planner}</button>
+          <button className={activePage === 'planner' ? 'active' : ''} onClick={() => { setActivePage('planner'); setPlannerPanelOpen(true); setUserMenuOpen(false); }}>{t.planner}</button>
           <button className={activePage === 'library' ? 'active' : ''} onClick={() => { setActivePage('library'); setUserMenuOpen(false) }}>{t.library}</button>
           <button className={activePage === 'settings' ? 'active' : ''} onClick={() => { setActivePage('settings'); setUserMenuOpen(false) }}>{t.settings}</button>
           <button className={activePage === 'privacy' ? 'active' : ''} onClick={() => { setActivePage('privacy'); setUserMenuOpen(false) }}>{t.privacyPolicy}</button>
@@ -732,7 +744,6 @@ export default function App() {
             <p className={showSubtitle ? 'force-show' : ''}>{t.appSub}</p>
           </div>
           <div className="topbar-controls">
-            {activePage === 'planner' && <button type="button" className="icon-button sheet-expand-button" aria-expanded={plannerPanelOpen} aria-label={plannerPanelOpen ? t.closePlanner : t.openRouteTools} onClick={(e) => { e.stopPropagation(); setPlannerPanelOpen((prev) => !prev) }}><span className="icon-only">{plannerPanelOpen ? <ArrowUpIcon /> : <ArrowDownIcon />}</span><span className="button-label">{plannerPanelOpen ? t.closePlanner : t.openPlanner}</span></button>}
           </div>
         </header>
         {message && <p className="status info">{message}</p>}
@@ -769,14 +780,20 @@ export default function App() {
         <aside className="panel planner-panel">
         <div className="planner-panel-head"><h2>{t.plannerHeading}</h2><button type="button" className="planner-mobile-close" aria-label={t.closePlanner} onClick={() => setPlannerPanelOpen(false)}>✕</button></div><p>{t.addPinsHint}</p>
         <label>{t.profile}</label>
-        <select value={activeProfile} onChange={(e) => { setActiveProfile(e.target.value); setIsExternalRoute(false); }}>
-          {profiles.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-          <option value="custom">{t.customProfile}</option>
-        </select>
-        <label className="checkbox-label">
-          <input type="checkbox" checked={avoidFerries} onChange={(e) => { setAvoidFerries(e.target.checked); setIsExternalRoute(false); }} />
-          <span>{t.avoidFerries}</span>
-        </label>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+          <select value={activeProfile} onChange={(e) => { setActiveProfile(e.target.value); setIsExternalRoute(false); }}>
+            {profiles.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+            <option value="custom">{t.customProfile}</option>
+          </select>
+          <label className="checkbox-label">
+            <input
+              type="checkbox"
+              checked={avoidFerries}
+              onChange={(e) => { setAvoidFerries(e.target.checked); setIsExternalRoute(false); }}
+            />
+            <span>{t.avoidFerries}</span>
+          </label>
+        </div>
         {activeProfile === 'custom' && (
           <textarea
             className="custom-profile-area"

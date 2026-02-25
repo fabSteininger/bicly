@@ -165,7 +165,6 @@ button.active { background: linear-gradient(160deg, var(--accent), var(--accent-
   flex-direction: column;
   min-width: 0;
   position: relative;
-  height: 100%;
   overflow: hidden;
 }
 
@@ -259,7 +258,8 @@ button.active { background: linear-gradient(160deg, var(--accent), var(--accent-
   margin: -1rem -1rem 1rem -1rem; /* Offset panel padding */
 }
 .menu-header h3 {
-  margin-left: 2rem;
+  margin-left: 1rem;
+  font-weight: 700;
 }
 .menu-close, .planner-mobile-close { background: none; border: none; font-size: 1.5rem; }
 
@@ -473,7 +473,17 @@ button.active { background: linear-gradient(160deg, var(--accent), var(--accent-
   top: 100%;
   left: 0;
   right: 0;
-  z-index: 1000;
+  z-index: 2000;
+}
+
+@media (max-width: 768px) {
+  .place-results {
+    max-height: 40vh;
+    position: fixed;
+    top: 250px;
+    left: 1rem;
+    right: 1rem;
+  }
 }
 .place-result {
   text-align: left;
@@ -566,16 +576,4 @@ button.active { background: linear-gradient(160deg, var(--accent), var(--accent-
   height: 1.2rem;
   margin: 0;
   cursor: pointer;
-}
-
-.mobile-planner-toggle { display: none; }
-
-@media (max-width: 768px) {
-  .mobile-planner-toggle {
-    display: flex;
-    position: absolute;
-    top: 1rem;
-    right: 1rem;
-    z-index: 100;
-  }
 }

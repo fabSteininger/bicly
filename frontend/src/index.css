@@ -1,0 +1,28 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html, body, #root {
+    @apply h-full m-0 overflow-hidden;
+  }
+}
+
+.waypoint-marker {
+  width: 24px;
+  height: 24px;
+  background: #0f172a;
+  color: #fff;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  border: 2px solid #fff;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
+.dark .waypoint-marker {
+  background: #3b82f6;
+  border-color: #0f172a;
+}

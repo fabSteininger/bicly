@@ -585,6 +585,10 @@ a { color: var(--accent); }
     align-items: stretch;
   }
 
+  .app-header:not(.expanded) .app-brand-block p {
+    display: none;
+  }
+
   .library-grid {
     grid-template-columns: 1fr;
   }

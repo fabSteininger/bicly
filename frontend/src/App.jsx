@@ -144,6 +144,7 @@ const TEXT = {
     expandChart: 'Expand chart', collapseChart: 'Collapse chart',
     distance: 'Distance', ascent: 'Ascent', descent: 'Descent',
     elevationProfile: 'Elevation profile', steepLegend: 'Steepness (10°+ = red)',
+    avoidFerries: 'Avoid ferries',
     openRouteDetailsSheet: 'Open route details', closeRouteDetailsSheet: 'Close route details',
     routeDetailsUnavailable: 'Generate a route to see distance and elevation details.',
     elevationFocusHint: 'Hover (desktop) or drag (touch) to highlight the matching map position.',
@@ -174,13 +175,14 @@ const TEXT = {
     expandChart: 'Profil vergrößern', collapseChart: 'Profil verkleinern',
     distance: 'Distanz', ascent: 'Anstieg', descent: 'Abstieg',
     elevationProfile: 'Höhenprofil', steepLegend: 'Steigung (ab 10° = rot)',
+    avoidFerries: 'Fähren vermeiden',
     openRouteDetailsSheet: 'Routendetails öffnen', closeRouteDetailsSheet: 'Routendetails schließen',
     routeDetailsUnavailable: 'Erzeuge eine Route, um Distanz- und Höhendetails zu sehen.',
     elevationFocusHint: 'Fahre mit der Maus darüber (Desktop) oder ziehe mit dem Finger, um die Kartenposition zu markieren.',
   },
 }
 
-const ElevationChart = ({ profile, title, legend, hoverHint, activeDistanceM, onHoverPoint, onLeave, t }) => {
+const ElevationChart = ({ profile, title, activeDistanceM, onHoverPoint, onLeave, t }) => {
   if (!profile.length) return null
 
   const totalDistM = profile[profile.length - 1].distanceM
@@ -232,7 +234,14 @@ const ElevationChart = ({ profile, title, legend, hoverHint, activeDistanceM, on
         intersect: false,
         callbacks: {
           title: (items) => `${(items[0].parsed.x / 1000).toFixed(1)} km`,
-          label: (item) => `${Math.round(item.parsed.y)} m`,
+          label: (item) => {
+            const point = displayProfile[item.dataIndex]
+            const elevation = `${Math.round(item.parsed.y)} m`
+            if (point && typeof point.slopeDeg === 'number') {
+              return `${elevation} (${point.slopeDeg.toFixed(1)}°)`
+            }
+            return elevation
+          },
         },
       },
       verticalLine: {
@@ -295,8 +304,6 @@ const ElevationChart = ({ profile, title, legend, hoverHint, activeDistanceM, on
       <div className="elevation-chart-container">
         <Line data={data} options={options} />
       </div>
-      <small>{legend}</small>
-      <small>{hoverHint}</small>
     </section>
   )
 }
@@ -418,6 +425,7 @@ export default function App() {
   const [profiles, setProfiles] = useState([])
   const [customProfiles, setCustomProfiles] = useState(() => JSON.parse(localStorage.getItem('bicly_custom_profiles') || '[]'))
   const [activeProfile, setActiveProfile] = useState(() => typeof plannerDraft?.activeProfile === 'string' ? plannerDraft.activeProfile : 'trekking')
+  const [avoidFerries, setAvoidFerries] = useState(() => plannerDraft?.avoidFerries === true)
   const [customProfileContent, setCustomProfileContent] = useState(() => localStorage.getItem('bicly_custom_profile_tmp') || '')
   const [latestGpx, setLatestGpx] = useState(() => typeof plannerDraft?.latestGpx === 'string' ? plannerDraft.latestGpx : '')
   const [routeGeoJson, setRouteGeoJson] = useState(() => plannerDraft?.routeGeoJson?.type === 'FeatureCollection' ? plannerDraft.routeGeoJson : emptyRouteGeoJson)
@@ -467,11 +475,12 @@ export default function App() {
       title,
       routeStats,
       showRouteDetails,
+      avoidFerries,
     }))
     if (activeProfile === 'custom') {
       localStorage.setItem('bicly_custom_profile_tmp', customProfileContent)
     }
-  }, [waypoints, activeProfile, customProfileContent, latestGpx, routeGeoJson, title, routeStats, showRouteDetails])
+  }, [waypoints, activeProfile, customProfileContent, latestGpx, routeGeoJson, title, routeStats, showRouteDetails, avoidFerries])
 
   useEffect(() => {
     if (!navigator.geolocation) return
@@ -581,11 +590,11 @@ export default function App() {
     const isCustomSaved = customProfiles.find((p) => p.id === activeProfile)
     const finalProfile = isCustomSaved ? isCustomSaved.content : profileToUse
 
-    fetchBrouterRoute({ profile: finalProfile, points: brouterPoints, signal: controller.signal })
+    fetchBrouterRoute({ profile: finalProfile, points: brouterPoints, signal: controller.signal, avoidFerries })
       .then((text) => { setLatestGpx(text); setRouteGeoJson(parseGpxToGeoJson(text)); setRouteStats(parseGpxStats(text)) })
       .catch(() => {})
     return () => controller.abort()
-  }, [activeProfile, customProfileContent, brouterPoints, waypoints.length, isExternalRoute])
+  }, [activeProfile, customProfileContent, brouterPoints, waypoints.length, isExternalRoute, avoidFerries])
 
   useEffect(() => {
     if (!latestGpx) return
@@ -721,9 +730,7 @@ export default function App() {
 
         {activePage === 'planner' && <section className={`planner-layout ${plannerPanelOpen ? '' : 'panel-collapsed'}`}>
         <section className="map-stack">
-          <section ref={mapRef} className="map" onClick={() => setPlannerPanelOpen(false)}>
-            <button type="button" className="mobile-planner-toggle icon-button sheet-expand-button" aria-expanded={plannerPanelOpen} aria-label={plannerPanelOpen ? t.closePlanner : t.openRouteTools} onClick={(e) => { e.stopPropagation(); setPlannerPanelOpen((prev) => !prev) }}>{plannerPanelOpen ? <ArrowDownIcon /> : <ArrowUpIcon />}</button>
-          </section>
+          <section ref={mapRef} className="map" onClick={() => setPlannerPanelOpen(false)} />
           <section className={`route-bottom-sheet ${showRouteDetails ? 'open' : 'closed'}`}>
             <button
               type="button"
@@ -744,7 +751,7 @@ export default function App() {
                 <span><strong>{t.descent}:</strong> {Math.round(routeStats.descentM)} m</span>
               </div>
               {routeStats.rawSummary && <p>{routeStats.rawSummary}</p>}
-              <ElevationChart profile={routeStats.elevationProfile} title={t.elevationProfile} legend={t.steepLegend} hoverHint={t.elevationFocusHint} activeDistanceM={activeElevationPoint?.distanceM} onHoverPoint={setActiveElevationPoint} onLeave={() => setActiveElevationPoint(null)} t={t} />
+              <ElevationChart profile={routeStats.elevationProfile} title={t.elevationProfile} activeDistanceM={activeElevationPoint?.distanceM} onHoverPoint={setActiveElevationPoint} onLeave={() => setActiveElevationPoint(null)} t={t} />
             </section>
           )}
             {!latestGpx && <p className="route-bottom-sheet-empty">{t.routeDetailsUnavailable}</p>}
@@ -757,6 +764,10 @@ export default function App() {
           {profiles.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
           <option value="custom">{t.customProfile}</option>
         </select>
+        <label className="checkbox-label">
+          <input type="checkbox" checked={avoidFerries} onChange={(e) => { setAvoidFerries(e.target.checked); setIsExternalRoute(false); }} />
+          <span>{t.avoidFerries}</span>
+        </label>
         {activeProfile === 'custom' && (
           <textarea
             className="custom-profile-area"
@@ -767,8 +778,21 @@ export default function App() {
           />
         )}
         <label>{t.title}</label><input value={title} onChange={(e) => setTitle(e.target.value)} />
-        <label>{t.findPlace}</label><input value={placeQuery} onChange={(e) => setPlaceQuery(e.target.value)} placeholder={t.placeSearchPlaceholder} />
-        {(searchingPlaces || placeResults.length > 0 || (placeQuery.trim().length >= 3 && !placeResults.length)) && <div className="place-results">{searchingPlaces && <small>{t.searchingPlaces}</small>}{!searchingPlaces && !placeResults.length && <small>{t.noPlacesFound}</small>}{!searchingPlaces && placeResults.map((place) => <button key={place.id} type="button" className="place-result" onClick={() => addWaypoint(place.label, place.lon, place.lat)}>{place.label}</button>)}</div>}
+        <label>{t.findPlace}</label>
+        <div style={{ position: 'relative' }}>
+          <input value={placeQuery} style={{ width: '100%' }} onChange={(e) => setPlaceQuery(e.target.value)} placeholder={t.placeSearchPlaceholder} />
+          {(searchingPlaces || placeResults.length > 0 || (placeQuery.trim().length >= 3 && !placeResults.length)) && (
+            <div className="place-results">
+              {searchingPlaces && <small style={{ padding: '0.5rem', display: 'block' }}>{t.searchingPlaces}</small>}
+              {!searchingPlaces && !placeResults.length && <small style={{ padding: '0.5rem', display: 'block' }}>{t.noPlacesFound}</small>}
+              {!searchingPlaces && placeResults.map((place) => (
+                <button key={place.id} type="button" className="place-result" onClick={() => { addWaypoint(place.label, place.lon, place.lat); setPlaceQuery(''); setPlaceResults([]); }}>
+                  {place.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
         <WaypointList waypoints={waypoints} setWaypoints={(val) => { setWaypoints(val); setIsExternalRoute(false); }} />
         <button onClick={() => { setWaypoints([]); setIsExternalRoute(false); }}>{t.clearPins}</button>
         <button onClick={saveGeneratedRoute} disabled={!latestGpx}>{t.saveGenerated}</button>

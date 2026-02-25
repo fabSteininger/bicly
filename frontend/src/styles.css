@@ -165,12 +165,15 @@ button.active { background: linear-gradient(160deg, var(--accent), var(--accent-
   flex-direction: column;
   min-width: 0;
   position: relative;
+  height: 100%;
+  overflow: hidden;
 }
 
 .map {
   flex: 1;
   min-height: 0;
   position: relative;
+  height: auto !important;
 }
 
 /* Right Sidebar Style (Desktop) */
@@ -248,6 +251,9 @@ button.active { background: linear-gradient(160deg, var(--accent), var(--accent-
   border-bottom: 1px solid var(--line);
   margin: -1rem -1rem 1rem -1rem; /* Offset panel padding */
 }
+.menu-header h3 {
+  margin-left: 1.25rem;
+}
 .menu-close, .planner-mobile-close { background: none; border: none; font-size: 1.5rem; }
 
 @media (min-width: 769px) {
@@ -258,28 +264,20 @@ button.active { background: linear-gradient(160deg, var(--accent), var(--accent-
 
 /* --- Route Details (Bottom Sheet) --- */
 .route-bottom-sheet {
-  position: absolute;
-  bottom: 1rem;
-  left: 1rem;
-  right: 1rem;
+  position: relative;
+  width: 100%;
+  left: 0;
+  right: 0;
+  bottom: 0;
   z-index: 150;
   background: #fffffff2;
   backdrop-filter: blur(8px);
-  border: 1px solid var(--line);
-  border-radius: 16px;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+  border-top: 1px solid var(--line);
   max-height: 50%;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-}
-
-@media (min-width: 769px) {
-    .route-bottom-sheet {
-        width: 400px;
-        left: 1rem;
-        right: auto;
-    }
+  flex: none;
 }
 
 .route-bottom-sheet-toggle {
@@ -356,33 +354,64 @@ button.active { background: linear-gradient(160deg, var(--accent), var(--accent-
 .quick-actions { display: flex; gap: 0.5rem; }
 .quick-actions button { flex: 1; font-size: 0.85rem; }
 
-.place-results { border: 1px solid var(--line); border-radius: 10px; background: #fff; padding: 0.5rem; max-height: 200px; overflow-y: auto; }
-.place-result { text-align: left; width: 100%; border: none; border-bottom: 1px solid #eee; border-radius: 0; padding: 0.8rem 1rem; min-height: 3rem; }
+.place-results {
+  border: 1px solid var(--accent);
+  border-radius: 10px;
+  background: #fff;
+  padding: 0.5rem;
+  max-height: 300px;
+  overflow-y: auto;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+}
+.place-result {
+  text-align: left;
+  width: 100%;
+  border: none;
+  border-bottom: 1px solid #eee;
+  border-radius: 0;
+  padding: 0.8rem 1rem;
+  min-height: 3rem;
+  color: var(--ink);
+  background: #fff;
+}
+.place-result:hover, .place-result:active {
+  background-color: var(--accent-soft);
+  color: var(--accent-strong);
+}
 .place-result:last-child { border-bottom: none; }
 
 /* Mobile Adjustments Overrides */
 @media (max-width: 768px) {
   .route-bottom-sheet {
-    position: static;
+    position: relative;
     width: 100%;
     margin: 0;
     border-radius: 0;
     border-left: none;
     border-right: none;
     border-bottom: none;
-    max-height: none;
+    max-height: 50%;
     box-shadow: none;
     background: #fff;
     backdrop-filter: none;
+    flex: none;
   }
 
   .map-stack {
-    overflow-y: auto;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
   }
 
   .map {
-    flex: none;
-    height: 300px; /* Give map a fixed height on mobile so details can follow below */
+    flex: 1;
+    height: auto !important;
   }
 }
 
@@ -401,6 +430,23 @@ button.active { background: linear-gradient(160deg, var(--accent), var(--accent-
 .saved-profile-item:last-child { border-bottom: none; }
 .danger { color: var(--danger); border-color: var(--danger); }
 .danger:hover { background: #fff5f5; }
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.95rem;
+  cursor: pointer;
+  user-select: none;
+  padding: 0.2rem 0;
+}
+
+.checkbox-label input {
+  width: 1.2rem;
+  height: 1.2rem;
+  margin: 0;
+  cursor: pointer;
+}
 
 .mobile-planner-toggle { display: none; }
 

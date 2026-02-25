@@ -180,7 +180,7 @@ const TEXT = {
   },
 }
 
-const ElevationChart = ({ profile, title, legend, hoverHint, activeDistanceM, onHoverPoint, onLeave, isExpanded, onToggleExpand, t }) => {
+const ElevationChart = ({ profile, title, legend, hoverHint, activeDistanceM, onHoverPoint, onLeave, t }) => {
   if (!profile.length) return null
 
   const totalDistM = profile[profile.length - 1].distanceM
@@ -288,12 +288,9 @@ const ElevationChart = ({ profile, title, legend, hoverHint, activeDistanceM, on
   }
 
   return (
-    <section className={`elevation-chart ${isExpanded ? 'expanded' : ''}`} aria-label={title}>
+    <section className="elevation-chart" aria-label={title}>
       <div className="elevation-chart-header">
         <h4>{title}</h4>
-        <button type="button" className="icon-button small" onClick={onToggleExpand} aria-label={isExpanded ? t.collapseChart : t.expandChart}>
-          <span className="icon-only">{isExpanded ? <MinimizeIcon /> : <ExpandIcon />}</span>
-        </button>
       </div>
       <div className="elevation-chart-container">
         <Line data={data} options={options} />
@@ -440,7 +437,6 @@ export default function App() {
   const [userMenuOpen, setUserMenuOpen] = useState(false)
   const [headerExpanded, setHeaderExpanded] = useState(false)
   const [showRouteDetails, setShowRouteDetails] = useState(() => Boolean(plannerDraft?.latestGpx))
-  const [chartExpanded, setChartExpanded] = useState(false)
   const [routeStats, setRouteStats] = useState(() => plannerDraft?.routeStats?.elevationProfile ? plannerDraft.routeStats : emptyRouteStats)
   const [activeElevationPoint, setActiveElevationPoint] = useState(null)
   const [isExternalRoute, setIsExternalRoute] = useState(false)
@@ -740,7 +736,17 @@ export default function App() {
               <span>{t.routeDetails}</span>
               <span className="icon-small" aria-hidden="true">{showRouteDetails ? <ArrowDownIcon /> : <ArrowUpIcon />}</span>
             </button>
-          {showRouteDetails && latestGpx && <section className="route-details"><h3>{t.routeDetails}</h3><p><strong>{t.distance}:</strong> {routeStats.distanceKm.toFixed(1)} km</p><p><strong>{t.ascent}:</strong> {Math.round(routeStats.ascentM)} m</p><p><strong>{t.descent}:</strong> {Math.round(routeStats.descentM)} m</p>{routeStats.rawSummary && <p>{routeStats.rawSummary}</p>}<ElevationChart profile={routeStats.elevationProfile} title={t.elevationProfile} legend={t.steepLegend} hoverHint={t.elevationFocusHint} activeDistanceM={activeElevationPoint?.distanceM} onHoverPoint={setActiveElevationPoint} onLeave={() => setActiveElevationPoint(null)} isExpanded={chartExpanded} onToggleExpand={() => setChartExpanded((prev) => !prev)} t={t} /></section>}
+          {showRouteDetails && latestGpx && (
+            <section className="route-details">
+              <div className="route-stats-summary">
+                <span><strong>{t.distance}:</strong> {routeStats.distanceKm.toFixed(1)} km</span>
+                <span><strong>{t.ascent}:</strong> {Math.round(routeStats.ascentM)} m</span>
+                <span><strong>{t.descent}:</strong> {Math.round(routeStats.descentM)} m</span>
+              </div>
+              {routeStats.rawSummary && <p>{routeStats.rawSummary}</p>}
+              <ElevationChart profile={routeStats.elevationProfile} title={t.elevationProfile} legend={t.steepLegend} hoverHint={t.elevationFocusHint} activeDistanceM={activeElevationPoint?.distanceM} onHoverPoint={setActiveElevationPoint} onLeave={() => setActiveElevationPoint(null)} t={t} />
+            </section>
+          )}
             {!latestGpx && <p className="route-bottom-sheet-empty">{t.routeDetailsUnavailable}</p>}
           </section>
         </section>

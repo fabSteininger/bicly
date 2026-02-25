@@ -207,9 +207,9 @@ a { color: var(--accent); }
 
 .route-bottom-sheet {
   position: absolute;
-  left: 0.7rem;
-  right: 0.7rem;
-  bottom: 0.7rem;
+  left: 0;
+  right: 0;
+  bottom: 0;
   z-index: 35;
   background: #fffffff2;
   border: 1px solid var(--line);
@@ -241,6 +241,19 @@ a { color: var(--accent); }
 .route-bottom-sheet .route-details {
   margin: 0.7rem;
   overflow: auto;
+}
+
+
+.route-bottom-sheet-toggle:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.route-bottom-sheet-empty {
+  margin: 0;
+  padding: 0.65rem 0.9rem 0.85rem;
+  color: var(--muted);
+  font-size: 0.9rem;
 }
 
 .route-details h3,
@@ -556,9 +569,4 @@ a { color: var(--accent); }
     z-index: 80;
   }
 
-  .route-bottom-sheet {
-    left: 0.45rem;
-    right: 0.45rem;
-    bottom: 0.45rem;
-  }
 }

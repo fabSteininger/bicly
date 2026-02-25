@@ -137,6 +137,17 @@ const ElevationChart = ({ profile, title, legend, hoverHint, activeDistanceM, on
         {activePoint && <>
           <line x1={xFor(activePoint.distanceM)} y1={paddingY} x2={xFor(activePoint.distanceM)} y2={height - paddingY} stroke="#0f172a" strokeOpacity="0.32" strokeDasharray="3 3" />
           <circle cx={xFor(activePoint.distanceM)} cy={yFor(activePoint.elevationM)} r="4" fill="#0f172a" stroke="#fff" strokeWidth="1.5" />
+          <text
+            x={xFor(activePoint.distanceM) + (xFor(activePoint.distanceM) > width - 60 ? -8 : 8)}
+            y={paddingY + 12}
+            fontSize="10"
+            fontWeight="600"
+            fill="#0f172a"
+            textAnchor={xFor(activePoint.distanceM) > width - 60 ? 'end' : 'start'}
+            style={{ pointerEvents: 'none', paintOrder: 'stroke', stroke: '#fff', strokeWidth: '3px', strokeLinejoin: 'round' }}
+          >
+            {(activePoint.distanceM / 1000).toFixed(1)} km
+          </text>
         </>}
       </svg>
       <small>{legend}</small>
@@ -274,9 +285,11 @@ export default function App() {
   const [searchingPlaces, setSearchingPlaces] = useState(false)
   const [plannerPanelOpen, setPlannerPanelOpen] = useState(false)
   const [userMenuOpen, setUserMenuOpen] = useState(false)
+  const [headerExpanded, setHeaderExpanded] = useState(false)
   const [showRouteDetails, setShowRouteDetails] = useState(() => Boolean(plannerDraft?.latestGpx))
   const [routeStats, setRouteStats] = useState(() => plannerDraft?.routeStats?.elevationProfile ? plannerDraft.routeStats : emptyRouteStats)
   const [activeElevationPoint, setActiveElevationPoint] = useState(null)
+  const hasInitialFit = useRef(false)
 
   useEffect(() => { localStorage.setItem(STORAGE_KEY, JSON.stringify(savedRoutes)) }, [savedRoutes])
   useEffect(() => {
@@ -320,6 +333,10 @@ export default function App() {
       ensureRouteLayer(m)
       setMap(m)
     })
+    m.on('style.load', () => {
+      ensureRouteLayer(m)
+      m.getSource(ROUTE_SOURCE_ID)?.setData(routeGeoJson)
+    })
     m.on('click', (e) => addWaypoint('', e.lngLat.lng, e.lngLat.lat))
 
     return () => {
@@ -327,8 +344,22 @@ export default function App() {
       mapMarkers.current = []
       m.remove()
       setMap(null)
+      hasInitialFit.current = false
     }
   }, [activePage])
+
+  useEffect(() => {
+    if (!map || hasInitialFit.current) return
+    if (waypoints.length > 0) {
+      const bounds = new maplibregl.LngLatBounds()
+      waypoints.forEach((p) => bounds.extend([p.lon, p.lat]))
+      map.fitBounds(bounds, { padding: 50, maxZoom: 15, animate: false })
+      hasInitialFit.current = true
+    } else if (userLocation) {
+      map.flyTo({ center: [userLocation.lon, userLocation.lat], zoom: 12 })
+      hasInitialFit.current = true
+    }
+  }, [map, userLocation, waypoints.length])
 
   useEffect(() => {
     if (!map) return
@@ -427,8 +458,8 @@ export default function App() {
 
   return (
     <main className="app-shell">
-      <header className="app-header">
-        <div className="app-brand-block">
+      <header className={`app-header ${headerExpanded ? 'expanded' : ''}`}>
+        <div className="app-brand-block" onClick={() => setHeaderExpanded(!headerExpanded)} style={{ cursor: 'pointer' }}>
           <div className="app-brand">{t.appTitle}</div>
           <p>{t.appSub}</p>
         </div>

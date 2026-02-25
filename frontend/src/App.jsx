@@ -255,7 +255,7 @@ export default function App() {
   const [lang, setLang] = useState('de')
   const t = TEXT[lang]
   const mapRef = useRef(null)
-  const mapInstance = useRef(null)
+  const [map, setMap] = useState(null)
   const mapMarkers = useRef([])
   const [activePage, setActivePage] = useState('planner')
   const [waypoints, setWaypoints] = useState(() => Array.isArray(plannerDraft?.waypoints) ? plannerDraft.waypoints : [])
@@ -308,45 +308,57 @@ export default function App() {
   const brouterPoints = useMemo(() => waypoints.map((p) => `${p.lon},${p.lat}`).join('|'), [waypoints])
 
   useEffect(() => {
-    if (activePage !== 'planner' || mapInstance.current || !mapRef.current) return
-    mapInstance.current = new maplibregl.Map({ container: mapRef.current, style: mapStyle, center: userLocation ? [userLocation.lon, userLocation.lat] : [8.68, 50.11], zoom: 10 })
-    mapInstance.current.addControl(new maplibregl.NavigationControl(), 'top-right')
-    mapInstance.current.on('load', () => ensureRouteLayer(mapInstance.current))
-    mapInstance.current.on('click', (e) => addWaypoint('', e.lngLat.lng, e.lngLat.lat))
-  }, [activePage, userLocation])
+    if (activePage !== 'planner' || !mapRef.current) return
+    const m = new maplibregl.Map({
+      container: mapRef.current,
+      style: mapStyle,
+      center: userLocation ? [userLocation.lon, userLocation.lat] : [8.68, 50.11],
+      zoom: 10,
+    })
+    m.addControl(new maplibregl.NavigationControl(), 'top-right')
+    m.on('load', () => {
+      ensureRouteLayer(m)
+      setMap(m)
+    })
+    m.on('click', (e) => addWaypoint('', e.lngLat.lng, e.lngLat.lat))
 
-  useEffect(() => () => { mapMarkers.current.forEach((m) => m.remove()); mapInstance.current?.remove() }, [])
-  useEffect(() => { if (activePage === 'planner') return; mapMarkers.current.forEach((m) => m.remove()); mapMarkers.current = []; mapInstance.current?.remove(); mapInstance.current = null }, [activePage])
+    return () => {
+      mapMarkers.current.forEach((marker) => marker.remove())
+      mapMarkers.current = []
+      m.remove()
+      setMap(null)
+    }
+  }, [activePage])
 
   useEffect(() => {
+    if (!map) return
     mapMarkers.current.forEach((m) => m.remove())
     mapMarkers.current = []
-    if (!mapInstance.current) return
     waypoints.forEach((point, index) => {
       const element = document.createElement('div')
       element.className = 'waypoint-marker'
       element.textContent = String(index + 1)
-      mapMarkers.current.push(new maplibregl.Marker({ element }).setLngLat([point.lon, point.lat]).addTo(mapInstance.current))
+      mapMarkers.current.push(new maplibregl.Marker({ element }).setLngLat([point.lon, point.lat]).addTo(map))
     })
-  }, [waypoints])
+  }, [map, waypoints])
 
   useEffect(() => {
-    if (!mapInstance.current || !mapInstance.current.isStyleLoaded()) return
-    ensureRouteLayer(mapInstance.current)
-    mapInstance.current.getSource(ROUTE_SOURCE_ID)?.setData(routeGeoJson)
-  }, [routeGeoJson])
+    if (!map || !map.isStyleLoaded()) return
+    ensureRouteLayer(map)
+    map.getSource(ROUTE_SOURCE_ID)?.setData(routeGeoJson)
+  }, [map, routeGeoJson])
 
   useEffect(() => {
-    if (!mapInstance.current || !mapInstance.current.isStyleLoaded()) return
-    ensureRouteLayer(mapInstance.current)
+    if (!map || !map.isStyleLoaded()) return
+    ensureRouteLayer(map)
     const hoverFeature = activeElevationPoint && Number.isFinite(activeElevationPoint.lon) && Number.isFinite(activeElevationPoint.lat)
       ? {
         type: 'FeatureCollection',
         features: [{ type: 'Feature', geometry: { type: 'Point', coordinates: [activeElevationPoint.lon, activeElevationPoint.lat] }, properties: {} }],
       }
       : emptyRouteGeoJson
-    mapInstance.current.getSource(ROUTE_HOVER_SOURCE_ID)?.setData(hoverFeature)
-  }, [activeElevationPoint])
+    map.getSource(ROUTE_HOVER_SOURCE_ID)?.setData(hoverFeature)
+  }, [map, activeElevationPoint])
 
   useEffect(() => {
     if (waypoints.length < 2) { setLatestGpx(''); setRouteGeoJson(emptyRouteGeoJson); setRouteStats(emptyRouteStats); setShowRouteDetails(false); return }

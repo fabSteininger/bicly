@@ -7,6 +7,8 @@ import { buildBrouterRouteUrl, loadProfiles } from './lib/api'
 const mapStyle = 'https://tiles.openfreemap.org/styles/liberty'
 const ROUTE_SOURCE_ID = 'generated-route-source'
 const ROUTE_LAYER_ID = 'generated-route-layer'
+const ROUTE_HOVER_SOURCE_ID = 'generated-route-hover-source'
+const ROUTE_HOVER_LAYER_ID = 'generated-route-hover-layer'
 const STORAGE_KEY = 'bicly_saved_routes'
 const PLANNER_DRAFT_KEY = 'bicly_planner_draft'
 
@@ -42,6 +44,7 @@ const TEXT = {
     elevationProfile: 'Elevation profile', steepLegend: 'Steepness (10°+ = red)',
     openRouteDetailsSheet: 'Open route details', closeRouteDetailsSheet: 'Close route details',
     routeDetailsUnavailable: 'Generate a route to see distance and elevation details.',
+    elevationFocusHint: 'Hover (desktop) or drag (touch) to highlight the matching map position.',
   },
   de: {
     appTitle: 'Bicly', appSub: 'Fahrradfreundliche Routenplanung mit lokaler GPX-Bibliothek.', planner: 'Planer', library: 'Bibliothek',
@@ -64,10 +67,11 @@ const TEXT = {
     elevationProfile: 'Höhenprofil', steepLegend: 'Steigung (ab 10° = rot)',
     openRouteDetailsSheet: 'Routendetails öffnen', closeRouteDetailsSheet: 'Routendetails schließen',
     routeDetailsUnavailable: 'Erzeuge eine Route, um Distanz- und Höhendetails zu sehen.',
+    elevationFocusHint: 'Fahre mit der Maus darüber (Desktop) oder ziehe mit dem Finger, um die Kartenposition zu markieren.',
   },
 }
 
-const ElevationChart = ({ profile, title, legend }) => {
+const ElevationChart = ({ profile, title, legend, hoverHint, activeDistanceM, onHoverPoint, onLeave }) => {
   if (!profile.length) return null
   const width = 320
   const height = 120
@@ -80,11 +84,43 @@ const ElevationChart = ({ profile, title, legend }) => {
   const elevationRange = Math.max(maxElevation - minElevation, 1)
   const xFor = (distanceM) => paddingX + (distanceM / maxDistance) * (width - (paddingX * 2))
   const yFor = (elevationM) => height - paddingY - ((elevationM - minElevation) / elevationRange) * (height - (paddingY * 2))
+  const nearestPointForX = (xPx) => {
+    const relative = (xPx - paddingX) / (width - (paddingX * 2))
+    const distanceAtCursor = Math.min(maxDistance, Math.max(0, relative * maxDistance))
+    return profile.reduce((closest, point) => {
+      if (!closest) return point
+      return Math.abs(point.distanceM - distanceAtCursor) < Math.abs(closest.distanceM - distanceAtCursor) ? point : closest
+    }, null)
+  }
+  const updateHover = (event) => {
+    const bounds = event.currentTarget.getBoundingClientRect()
+    const xPx = ((event.clientX - bounds.left) / bounds.width) * width
+    const hoveredPoint = nearestPointForX(xPx)
+    onHoverPoint?.(hoveredPoint)
+  }
+  const activePoint = Number.isFinite(activeDistanceM)
+    ? profile.reduce((closest, point) => {
+      if (!closest) return point
+      return Math.abs(point.distanceM - activeDistanceM) < Math.abs(closest.distanceM - activeDistanceM) ? point : closest
+    }, null)
+    : null
 
   return (
     <section className="elevation-chart" aria-label={title}>
       <h4>{title}</h4>
-      <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label={title}>
+      <svg
+        viewBox={`0 0 ${width} ${height}`}
+        role="img"
+        aria-label={title}
+        onMouseMove={updateHover}
+        onMouseLeave={onLeave}
+        onTouchMove={(event) => {
+          const touch = event.touches[0]
+          if (!touch) return
+          updateHover({ currentTarget: event.currentTarget, clientX: touch.clientX })
+        }}
+        onTouchEnd={onLeave}
+      >
         <defs>
           <linearGradient id="elevation-fill" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor="#a8c8ff" stopOpacity="0.85" />
@@ -98,8 +134,13 @@ const ElevationChart = ({ profile, title, legend }) => {
           const color = angle >= 10 ? '#e22b2b' : angle >= 6 ? '#ef8f2e' : '#1f6feb'
           return <line key={`${point.distanceM}-${point.elevationM}`} x1={xFor(prev.distanceM)} y1={yFor(prev.elevationM)} x2={xFor(point.distanceM)} y2={yFor(point.elevationM)} stroke={color} strokeWidth="2.6" strokeLinecap="round" />
         })}
+        {activePoint && <>
+          <line x1={xFor(activePoint.distanceM)} y1={paddingY} x2={xFor(activePoint.distanceM)} y2={height - paddingY} stroke="#0f172a" strokeOpacity="0.32" strokeDasharray="3 3" />
+          <circle cx={xFor(activePoint.distanceM)} cy={yFor(activePoint.elevationM)} r="4" fill="#0f172a" stroke="#fff" strokeWidth="1.5" />
+        </>}
       </svg>
       <small>{legend}</small>
+      <small>{hoverHint}</small>
     </section>
   )
 }
@@ -146,14 +187,14 @@ const parseGpxStats = (gpxText) => {
       rawSummary,
       elevationProfile: trkpts.reduce((acc, point, index) => {
         if (!Number.isFinite(point.ele)) return acc
-        if (!index) return [{ distanceM: 0, elevationM: point.ele, slopeDeg: 0 }]
+        if (!index) return [{ distanceM: 0, elevationM: point.ele, slopeDeg: 0, lon: point.lon, lat: point.lat }]
         const previous = trkpts[index - 1]
         const previousDistance = acc[acc.length - 1]?.distanceM ?? 0
         const segmentMeters = haversineMeters(previous, point)
         const slopeDeg = Number.isFinite(previous.ele) && segmentMeters > 0
           ? Math.abs((Math.atan((point.ele - previous.ele) / segmentMeters) * 180) / Math.PI)
           : 0
-        return [...acc, { distanceM: previousDistance + segmentMeters, elevationM: point.ele, slopeDeg }]
+        return [...acc, { distanceM: previousDistance + segmentMeters, elevationM: point.ele, slopeDeg, lon: point.lon, lat: point.lat }]
       }, []),
     }
   } catch {
@@ -193,6 +234,20 @@ const ensureRouteLayer = (map) => {
   if (!map.getLayer(ROUTE_LAYER_ID)) {
     map.addLayer({ id: ROUTE_LAYER_ID, type: 'line', source: ROUTE_SOURCE_ID, paint: { 'line-color': '#0c5ff4', 'line-width': 4, 'line-opacity': 0.9 } })
   }
+  if (!map.getSource(ROUTE_HOVER_SOURCE_ID)) map.addSource(ROUTE_HOVER_SOURCE_ID, { type: 'geojson', data: emptyRouteGeoJson })
+  if (!map.getLayer(ROUTE_HOVER_LAYER_ID)) {
+    map.addLayer({
+      id: ROUTE_HOVER_LAYER_ID,
+      type: 'circle',
+      source: ROUTE_HOVER_SOURCE_ID,
+      paint: {
+        'circle-radius': 7,
+        'circle-color': '#0f172a',
+        'circle-stroke-width': 2,
+        'circle-stroke-color': '#ffffff',
+      },
+    })
+  }
 }
 
 export default function App() {
@@ -221,6 +276,7 @@ export default function App() {
   const [userMenuOpen, setUserMenuOpen] = useState(false)
   const [showRouteDetails, setShowRouteDetails] = useState(() => Boolean(plannerDraft?.latestGpx))
   const [routeStats, setRouteStats] = useState(() => plannerDraft?.routeStats?.elevationProfile ? plannerDraft.routeStats : emptyRouteStats)
+  const [activeElevationPoint, setActiveElevationPoint] = useState(null)
 
   useEffect(() => { localStorage.setItem(STORAGE_KEY, JSON.stringify(savedRoutes)) }, [savedRoutes])
   useEffect(() => {
@@ -281,6 +337,18 @@ export default function App() {
   }, [routeGeoJson])
 
   useEffect(() => {
+    if (!mapInstance.current || !mapInstance.current.isStyleLoaded()) return
+    ensureRouteLayer(mapInstance.current)
+    const hoverFeature = activeElevationPoint && Number.isFinite(activeElevationPoint.lon) && Number.isFinite(activeElevationPoint.lat)
+      ? {
+        type: 'FeatureCollection',
+        features: [{ type: 'Feature', geometry: { type: 'Point', coordinates: [activeElevationPoint.lon, activeElevationPoint.lat] }, properties: {} }],
+      }
+      : emptyRouteGeoJson
+    mapInstance.current.getSource(ROUTE_HOVER_SOURCE_ID)?.setData(hoverFeature)
+  }, [activeElevationPoint])
+
+  useEffect(() => {
     if (waypoints.length < 2) { setLatestGpx(''); setRouteGeoJson(emptyRouteGeoJson); setRouteStats(emptyRouteStats); setShowRouteDetails(false); return }
     const controller = new AbortController()
     fetch(buildBrouterRouteUrl({ profile: activeProfile, points: brouterPoints }), { signal: controller.signal })
@@ -294,6 +362,10 @@ export default function App() {
     if (!latestGpx) return
     setShowRouteDetails(true)
   }, [latestGpx])
+
+  useEffect(() => {
+    if (activePage !== 'planner') setActiveElevationPoint(null)
+  }, [activePage])
 
   useEffect(() => {
     const query = placeQuery.trim()
@@ -350,7 +422,7 @@ export default function App() {
         </div>
         <div className="topbar-controls">
           <button type="button" className="icon-button app-menu-button" aria-label={t.appMenu} onClick={() => setUserMenuOpen((prev) => !prev)}><span className="button-label">{t.appMenu}</span><span className="icon-only"><HamburgerIcon /></span></button>
-          {activePage === 'planner' && <button type="button" className="icon-button sheet-expand-button" aria-expanded={plannerPanelOpen} aria-label={plannerPanelOpen ? t.closePlanner : t.openRouteTools} onClick={(e) => { e.stopPropagation(); setPlannerPanelOpen((prev) => !prev) }}><span aria-hidden="true">{plannerPanelOpen ? '▾' : '▴'}</span></button>}
+          {activePage === 'planner' && <button type="button" className="icon-button sheet-expand-button" aria-expanded={plannerPanelOpen} aria-label={plannerPanelOpen ? t.closePlanner : t.openRouteTools} onClick={(e) => { e.stopPropagation(); setPlannerPanelOpen((prev) => !prev) }}><span aria-hidden="true">{plannerPanelOpen ? '–' : '+'}</span></button>}
           {userMenuOpen && <div className="account-menu"><button className={activePage === 'planner' ? 'active' : ''} onClick={() => { setActivePage('planner'); setUserMenuOpen(false) }}>{t.planner}</button><button className={activePage === 'library' ? 'active' : ''} onClick={() => { setActivePage('library'); setUserMenuOpen(false) }}>{t.library}</button><button className={activePage === 'privacy' ? 'active' : ''} onClick={() => { setActivePage('privacy'); setUserMenuOpen(false) }}>{t.privacyPolicy}</button><button className={activePage === 'impressum' ? 'active' : ''} onClick={() => { setActivePage('impressum'); setUserMenuOpen(false) }}>{t.impressum}</button><label>{t.language}<select value={lang} onChange={(e) => setLang(e.target.value)}><option value="en">English</option><option value="de">Deutsch</option></select></label></div>}
         </div>
       </header>
@@ -373,7 +445,7 @@ export default function App() {
               <span>{t.routeDetails}</span>
               <span aria-hidden="true">{showRouteDetails ? '▾' : '▴'}</span>
             </button>
-            {showRouteDetails && latestGpx && <section className="route-details"><h3>{t.routeDetails}</h3><p><strong>{t.distance}:</strong> {routeStats.distanceKm.toFixed(1)} km</p><p><strong>{t.ascent}:</strong> {Math.round(routeStats.ascentM)} m</p><p><strong>{t.descent}:</strong> {Math.round(routeStats.descentM)} m</p>{routeStats.rawSummary && <p>{routeStats.rawSummary}</p>}<ElevationChart profile={routeStats.elevationProfile} title={t.elevationProfile} legend={t.steepLegend} /></section>}
+            {showRouteDetails && latestGpx && <section className="route-details"><h3>{t.routeDetails}</h3><p><strong>{t.distance}:</strong> {routeStats.distanceKm.toFixed(1)} km</p><p><strong>{t.ascent}:</strong> {Math.round(routeStats.ascentM)} m</p><p><strong>{t.descent}:</strong> {Math.round(routeStats.descentM)} m</p>{routeStats.rawSummary && <p>{routeStats.rawSummary}</p>}<ElevationChart profile={routeStats.elevationProfile} title={t.elevationProfile} legend={t.steepLegend} hoverHint={t.elevationFocusHint} activeDistanceM={activeElevationPoint?.distanceM} onHoverPoint={setActiveElevationPoint} onLeave={() => setActiveElevationPoint(null)} /></section>}
             {!latestGpx && <p className="route-bottom-sheet-empty">{t.routeDetailsUnavailable}</p>}
           </section>
         </section>

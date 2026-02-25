@@ -1,39 +1,29 @@
 export const BROUTER_DIRECT_URL = import.meta.env.VITE_BROUTER_DIRECT_URL ?? 'https://brouter.de/brouter'
 
-export const fetchBrouterRoute = async ({ profile, points, customProfileContent, signal }) => {
+export const fetchBrouterRoute = async ({ profile, points, signal }) => {
+  const isCustom = profile && (profile.includes('\n') || profile.includes('{'))
+
+  if (isCustom) {
+    const params = new URLSearchParams()
+    params.set('lonlats', points)
+    params.set('alternativeidx', '0')
+    params.set('format', 'gpx')
+    // For custom profiles, we POST the profile content
+    const res = await fetch(`${BROUTER_DIRECT_URL}?${params.toString()}`, {
+      method: 'POST',
+      body: profile,
+      signal,
+    })
+    if (!res.ok) throw new Error('BRouter custom profile request failed')
+    return res.text()
+  }
+
   const params = new URLSearchParams()
   params.set('lonlats', points)
+  params.set('profile', profile || 'trekking')
   params.set('alternativeidx', '0')
   params.set('format', 'gpx')
 
-  let profileToUse = profile || 'trekking'
-
-  if (customProfileContent) {
-    // 1. Upload custom profile to get a temporary profile ID
-    const uploadUrl = `${BROUTER_DIRECT_URL}/profile`
-    const uploadRes = await fetch(uploadUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'text/plain;charset=UTF-8',
-      },
-      body: customProfileContent,
-      signal,
-    })
-
-    if (!uploadRes.ok) {
-      throw new Error(`Profile upload failed: ${uploadRes.status}`)
-    }
-
-    const uploadData = await uploadRes.json()
-    if (uploadData.profileid) {
-      profileToUse = uploadData.profileid
-    } else {
-      throw new Error(`Failed to get profile ID: ${uploadData.error || 'Unknown error'}`)
-    }
-  }
-
-  // 2. Request route using the profile ID
-  params.set('profile', profileToUse)
   const res = await fetch(`${BROUTER_DIRECT_URL}?${params.toString()}`, { signal })
   if (!res.ok) throw new Error('BRouter request failed')
   return res.text()

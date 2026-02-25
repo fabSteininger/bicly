@@ -1,8 +1,73 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+  Filler,
+} from 'chart.js'
+import { Line } from 'react-chartjs-2'
 import WaypointList from './components/WaypointList'
 import { buildBrouterRouteUrl, loadProfiles } from './lib/api'
+
+const verticalLinePlugin = {
+  id: 'verticalLine',
+  afterDraw: (chart) => {
+    const { activeDistanceM, profile } = chart.options.plugins.verticalLine || {}
+    if (activeDistanceM !== undefined && activeDistanceM !== null) {
+      const { ctx, chartArea: { top, bottom }, scales: { x, y } } = chart
+      const xPos = x.getPixelForValue(activeDistanceM)
+      if (xPos >= chart.chartArea.left && xPos <= chart.chartArea.right) {
+        ctx.save()
+        ctx.beginPath()
+        ctx.strokeStyle = '#0f172a'
+        ctx.lineWidth = 1
+        ctx.setLineDash([3, 3])
+        ctx.moveTo(xPos, top)
+        ctx.lineTo(xPos, bottom)
+        ctx.stroke()
+        ctx.restore()
+
+        if (profile) {
+          const activePoint = profile.reduce((closest, point) => {
+            if (!closest) return point
+            return Math.abs(point.distanceM - activeDistanceM) < Math.abs(closest.distanceM - activeDistanceM) ? point : closest
+          }, null)
+          if (activePoint) {
+            const yPos = y.getPixelForValue(activePoint.elevationM)
+            ctx.save()
+            ctx.beginPath()
+            ctx.fillStyle = '#0f172a'
+            ctx.arc(xPos, yPos, 4, 0, 2 * Math.PI)
+            ctx.fill()
+            ctx.strokeStyle = '#fff'
+            ctx.lineWidth = 1.5
+            ctx.stroke()
+            ctx.restore()
+          }
+        }
+      }
+    }
+  },
+}
+
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+  Filler,
+  verticalLinePlugin,
+)
 
 const mapStyle = 'https://tiles.openfreemap.org/styles/liberty'
 const ROUTE_SOURCE_ID = 'generated-route-source'
@@ -73,77 +138,76 @@ const TEXT = {
 
 const ElevationChart = ({ profile, title, legend, hoverHint, activeDistanceM, onHoverPoint, onLeave }) => {
   if (!profile.length) return null
-  const width = 320
-  const height = 120
-  const paddingX = 8
-  const paddingY = 8
-  const maxDistance = profile[profile.length - 1]?.distanceM || 1
-  const elevations = profile.map((point) => point.elevationM)
-  const minElevation = Math.min(...elevations)
-  const maxElevation = Math.max(...elevations)
-  const elevationRange = Math.max(maxElevation - minElevation, 1)
-  const xFor = (distanceM) => paddingX + (distanceM / maxDistance) * (width - (paddingX * 2))
-  const yFor = (elevationM) => height - paddingY - ((elevationM - minElevation) / elevationRange) * (height - (paddingY * 2))
-  const nearestPointForX = (xPx) => {
-    const relative = (xPx - paddingX) / (width - (paddingX * 2))
-    const distanceAtCursor = Math.min(maxDistance, Math.max(0, relative * maxDistance))
-    return profile.reduce((closest, point) => {
-      if (!closest) return point
-      return Math.abs(point.distanceM - distanceAtCursor) < Math.abs(closest.distanceM - distanceAtCursor) ? point : closest
-    }, null)
+
+  const data = {
+    datasets: [{
+      data: profile.map((p) => ({ x: p.distanceM, y: p.elevationM })),
+      fill: true,
+      backgroundColor: 'rgba(168, 200, 255, 0.4)',
+      borderColor: '#1f6feb',
+      borderWidth: 2,
+      pointRadius: 0,
+      pointHitRadius: 10,
+      tension: 0.1,
+      segment: {
+        borderColor: (ctx) => {
+          const point = profile[ctx.p1DataIndex]
+          if (!point) return '#1f6feb'
+          return point.slopeDeg >= 10 ? '#e22b2b' : point.slopeDeg >= 6 ? '#ef8f2e' : '#1f6feb'
+        },
+      },
+    }],
   }
-  const updateHover = (event) => {
-    const bounds = event.currentTarget.getBoundingClientRect()
-    const xPx = ((event.clientX - bounds.left) / bounds.width) * width
-    const hoveredPoint = nearestPointForX(xPx)
-    onHoverPoint?.(hoveredPoint)
+
+  const options = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        enabled: true,
+        mode: 'index',
+        intersect: false,
+        callbacks: {
+          title: (items) => `${(items[0].parsed.x / 1000).toFixed(1)} km`,
+          label: (item) => `${Math.round(item.parsed.y)} m`,
+        },
+      },
+      verticalLine: {
+        activeDistanceM,
+        profile,
+      },
+    },
+    scales: {
+      x: {
+        type: 'linear',
+        ticks: {
+          callback: (val) => `${(val / 1000).toFixed(1)} km`,
+          maxTicksLimit: 6,
+        },
+        grid: { display: false },
+      },
+      y: {
+        ticks: {
+          callback: (val) => `${val}m`,
+        },
+      },
+    },
+    onHover: (event, elements) => {
+      if (elements && elements.length > 0) {
+        onHoverPoint?.(profile[elements[0].index])
+      } else {
+        onLeave?.()
+      }
+    },
   }
-  const activePoint = Number.isFinite(activeDistanceM)
-    ? profile.reduce((closest, point) => {
-      if (!closest) return point
-      return Math.abs(point.distanceM - activeDistanceM) < Math.abs(closest.distanceM - activeDistanceM) ? point : closest
-    }, null)
-    : null
 
   return (
     <section className="elevation-chart" aria-label={title}>
       <h4>{title}</h4>
-      <svg
-        viewBox={`0 0 ${width} ${height}`}
-        role="img"
-        aria-label={title}
-        onMouseMove={updateHover}
-        onMouseLeave={onLeave}
-        onTouchMove={(event) => {
-          const touch = event.touches[0]
-          if (!touch) return
-          updateHover({ currentTarget: event.currentTarget, clientX: touch.clientX })
-        }}
-        onTouchEnd={onLeave}
-      >
-        <defs>
-          <linearGradient id="elevation-fill" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#a8c8ff" stopOpacity="0.85" />
-            <stop offset="100%" stopColor="#e9f2ff" stopOpacity="0.2" />
-          </linearGradient>
-        </defs>
-        <path d={`M ${xFor(profile[0].distanceM)} ${height - paddingY} ${profile.map((point) => `L ${xFor(point.distanceM)} ${yFor(point.elevationM)}`).join(' ')} L ${xFor(profile[profile.length - 1].distanceM)} ${height - paddingY} Z`} fill="url(#elevation-fill)" />
-        {profile.slice(1).map((point, index) => {
-          const prev = profile[index]
-          const angle = point.slopeDeg
-          const color = angle >= 10 ? '#e22b2b' : angle >= 6 ? '#ef8f2e' : '#1f6feb'
-          return <line key={`${point.distanceM}-${point.elevationM}`} x1={xFor(prev.distanceM)} y1={yFor(prev.elevationM)} x2={xFor(point.distanceM)} y2={yFor(point.elevationM)} stroke={color} strokeWidth="2.6" strokeLinecap="round" />
-        })}
-        {activePoint && <>
-          <line x1={xFor(activePoint.distanceM)} y1={paddingY} x2={xFor(activePoint.distanceM)} y2={height - paddingY} stroke="#0f172a" strokeOpacity="0.32" strokeDasharray="3 3" />
-          <circle cx={xFor(activePoint.distanceM)} cy={yFor(activePoint.elevationM)} r="4" fill="#0f172a" stroke="#fff" strokeWidth="1.5" />
-          <g transform={`translate(${xFor(activePoint.distanceM) + (xFor(activePoint.distanceM) > width / 2 ? -65 : 5)}, ${yFor(activePoint.elevationM) < 40 ? yFor(activePoint.elevationM) + 10 : yFor(activePoint.elevationM) - 40})`}>
-            <rect width="60" height="32" rx="4" fill="white" fillOpacity="0.9" stroke="#cbd5e1" strokeWidth="1" />
-            <text x="6" y="13" fontSize="9" fontWeight="bold" fill="#1e293b">{(activePoint.distanceM / 1000).toFixed(1)} km</text>
-            <text x="6" y="26" fontSize="9" fill="#475569">{Math.round(activePoint.elevationM)} m</text>
-          </g>
-        </>}
-      </svg>
+      <div className="elevation-chart-container">
+        <Line data={data} options={options} />
+      </div>
       <small>{legend}</small>
       <small>{hoverHint}</small>
     </section>
@@ -473,7 +537,7 @@ export default function App() {
           <p className={showSubtitle ? 'force-show' : ''}>{t.appSub}</p>
         </div>
         <div className="topbar-controls">
-          <button type="button" className="icon-button app-menu-button" aria-label={t.appMenu} onClick={() => setUserMenuOpen((prev) => !prev)}><span className="button-label">{t.appMenu}</span><span className="icon-only"><HamburgerIcon /></span></button>
+          <button type="button" className="icon-button app-menu-button" aria-label={t.appMenu} onClick={() => setUserMenuOpen((prev) => !prev)}><span className="icon-only"><HamburgerIcon /></span><span className="button-label">{t.appMenu}</span></button>
           {activePage === 'planner' && <button type="button" className="icon-button sheet-expand-button" aria-expanded={plannerPanelOpen} aria-label={plannerPanelOpen ? t.closePlanner : t.openRouteTools} onClick={(e) => { e.stopPropagation(); setPlannerPanelOpen((prev) => !prev) }}><span aria-hidden="true">{plannerPanelOpen ? '–' : '+'}</span></button>}
           {userMenuOpen && <div className="account-menu"><button className={activePage === 'planner' ? 'active' : ''} onClick={() => { setActivePage('planner'); setUserMenuOpen(false) }}>{t.planner}</button><button className={activePage === 'library' ? 'active' : ''} onClick={() => { setActivePage('library'); setUserMenuOpen(false) }}>{t.library}</button><button className={activePage === 'privacy' ? 'active' : ''} onClick={() => { setActivePage('privacy'); setUserMenuOpen(false) }}>{t.privacyPolicy}</button><button className={activePage === 'impressum' ? 'active' : ''} onClick={() => { setActivePage('impressum'); setUserMenuOpen(false) }}>{t.impressum}</button><label>{t.language}<select value={lang} onChange={(e) => setLang(e.target.value)}><option value="en">English</option><option value="de">Deutsch</option></select></label></div>}
         </div>

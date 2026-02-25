@@ -330,23 +330,25 @@ export default function App() {
       {message && <p className="status info">{message}</p>}
 
       {activePage === 'planner' && <section className={`planner-layout ${plannerPanelOpen ? '' : 'panel-collapsed'}`}>
-        <section ref={mapRef} className="map" onClick={() => setPlannerPanelOpen(false)}>
-          <button type="button" className="mobile-planner-toggle icon-button" aria-label={t.openRouteTools} onClick={(e) => { e.stopPropagation(); setPlannerPanelOpen(true) }}><ExpandIcon /></button>
-        </section>
-        <section className={`route-bottom-sheet ${showRouteDetails ? 'open' : 'closed'}`}>
-          <button
-            type="button"
-            className="route-bottom-sheet-toggle"
-            aria-expanded={showRouteDetails}
-            aria-label={showRouteDetails ? t.closeRouteDetailsSheet : t.openRouteDetailsSheet}
-            onClick={() => setShowRouteDetails((prev) => !prev)}
-            disabled={!latestGpx}
-          >
-            <span>{t.routeDetails}</span>
-            <span aria-hidden="true">{showRouteDetails ? '▾' : '▴'}</span>
-          </button>
-          {showRouteDetails && latestGpx && <section className="route-details"><h3>{t.routeDetails}</h3><p><strong>{t.distance}:</strong> {routeStats.distanceKm.toFixed(1)} km</p><p><strong>{t.ascent}:</strong> {Math.round(routeStats.ascentM)} m</p><p><strong>{t.descent}:</strong> {Math.round(routeStats.descentM)} m</p>{routeStats.rawSummary && <p>{routeStats.rawSummary}</p>}<ElevationChart profile={routeStats.elevationProfile} title={t.elevationProfile} legend={t.steepLegend} /></section>}
-          {!latestGpx && <p className="route-bottom-sheet-empty">{t.routeDetailsUnavailable}</p>}
+        <section className="map-stack">
+          <section ref={mapRef} className="map" onClick={() => setPlannerPanelOpen(false)}>
+            <button type="button" className="mobile-planner-toggle icon-button" aria-label={t.openRouteTools} onClick={(e) => { e.stopPropagation(); setPlannerPanelOpen(true) }}><ExpandIcon /></button>
+          </section>
+          <section className={`route-bottom-sheet ${showRouteDetails ? 'open' : 'closed'}`}>
+            <button
+              type="button"
+              className="route-bottom-sheet-toggle"
+              aria-expanded={showRouteDetails}
+              aria-label={showRouteDetails ? t.closeRouteDetailsSheet : t.openRouteDetailsSheet}
+              onClick={() => setShowRouteDetails((prev) => !prev)}
+              disabled={!latestGpx}
+            >
+              <span>{t.routeDetails}</span>
+              <span aria-hidden="true">{showRouteDetails ? '▾' : '▴'}</span>
+            </button>
+            {showRouteDetails && latestGpx && <section className="route-details"><h3>{t.routeDetails}</h3><p><strong>{t.distance}:</strong> {routeStats.distanceKm.toFixed(1)} km</p><p><strong>{t.ascent}:</strong> {Math.round(routeStats.ascentM)} m</p><p><strong>{t.descent}:</strong> {Math.round(routeStats.descentM)} m</p>{routeStats.rawSummary && <p>{routeStats.rawSummary}</p>}<ElevationChart profile={routeStats.elevationProfile} title={t.elevationProfile} legend={t.steepLegend} /></section>}
+            {!latestGpx && <p className="route-bottom-sheet-empty">{t.routeDetailsUnavailable}</p>}
+          </section>
         </section>
         <aside className="panel planner-panel">
         <div className="planner-panel-head"><h2>{t.plannerHeading}</h2><button type="button" className="planner-mobile-close" aria-label={t.closePlanner} onClick={() => setPlannerPanelOpen(false)}>✕</button></div><p>{t.addPinsHint}</p>

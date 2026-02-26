@@ -1,5 +1,9 @@
 export const BROUTER_DIRECT_URL = import.meta.env.VITE_BROUTER_DIRECT_URL ?? 'https://brouter.de/brouter'
 
+const getBrouterBaseUrl = () => {
+  return BROUTER_DIRECT_URL.replace(/\/brouter\/?$/, '')
+}
+
 export const fetchBrouterRoute = async ({ profile, points, signal }) => {
   const isCustom = profile && (profile.includes('\n') || profile.includes('{'))
 
@@ -53,7 +57,7 @@ export const ROUTING_PROFILES = [
 ]
 
 export const uploadProfile = async (profileContent) => {
-  const res = await fetch(`${BROUTER_DIRECT_URL}/profiles`, {
+  const res = await fetch(`${getBrouterBaseUrl()}/profiles`, {
     method: 'POST',
     body: profileContent,
   })
@@ -66,7 +70,7 @@ export const uploadProfile = async (profileContent) => {
 
 export const loadProfiles = async () => {
   try {
-    const res = await fetch(`${BROUTER_DIRECT_URL}/profiles`)
+    const res = await fetch(`${getBrouterBaseUrl()}/profiles`)
     if (res.ok) {
       return await res.json()
     }

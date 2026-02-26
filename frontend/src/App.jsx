@@ -679,7 +679,9 @@ export default function App() {
     if (activeProfile === 'custom' && !customProfileContent) return
 
     const isCustomSaved = customProfiles.find((p) => p.id === activeProfile)
-    const finalProfile = isCustomSaved ? isCustomSaved.content : profileToUse
+    const finalProfile = isCustomSaved
+      ? (isCustomSaved.id.startsWith('custom_') ? isCustomSaved.id : isCustomSaved.content)
+      : profileToUse
 
     setRoutingError('')
     fetchBrouterRoute({ profile: finalProfile, points: brouterPoints, signal: controller.signal })
@@ -877,10 +879,10 @@ export default function App() {
         <section className="flex-1 flex flex-col min-w-0 relative">
           <section ref={mapRef} className="flex-1 min-h-0 relative" onClick={() => setPlannerPanelOpen(false)}>
           </section>
-          <section className={`flex flex-col overflow-hidden bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 transition-all duration-300 ${showRouteDetails ? 'h-[60%]' : 'h-12'}`}>
+          <section className={`flex-none flex flex-col overflow-hidden bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 transition-all duration-300 z-[200] min-h-[3rem] ${showRouteDetails ? 'h-[60%]' : 'h-12'}`}>
             <button
               type="button"
-              className="flex justify-between items-center px-4 h-12 w-full font-bold hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors disabled:opacity-50"
+              className="flex-none flex justify-between items-center px-4 h-12 w-full font-bold hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors disabled:opacity-50"
               aria-expanded={showRouteDetails}
               aria-label={showRouteDetails ? t.closeRouteDetailsSheet : t.openRouteDetailsSheet}
               onClick={() => setShowRouteDetails((prev) => !prev)}

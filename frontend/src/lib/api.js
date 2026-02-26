@@ -4,14 +4,19 @@ const getBrouterBaseUrl = () => {
   return BROUTER_DIRECT_URL.replace(/\/brouter\/?$/, '')
 }
 
-export const fetchBrouterRoute = async ({ profile, points, signal }) => {
+export const fetchBrouterRoute = async ({ profile, points, signal, engineMode, roundTripDistance, direction, roundTripPoints }) => {
   const isCustom = profile && (profile.includes('\n') || profile.includes('{'))
 
+  const params = new URLSearchParams()
+  params.set('lonlats', points)
+  params.set('alternativeidx', '0')
+  params.set('format', 'gpx')
+  if (engineMode) params.set('engineMode', engineMode)
+  if (roundTripDistance) params.set('roundTripDistance', roundTripDistance)
+  if (direction !== undefined && direction !== null) params.set('direction', direction)
+  if (roundTripPoints) params.set('roundTripPoints', roundTripPoints)
+
   if (isCustom) {
-    const params = new URLSearchParams()
-    params.set('lonlats', points)
-    params.set('alternativeidx', '0')
-    params.set('format', 'gpx')
     // For custom profiles, we POST the profile content
     const res = await fetch(`${BROUTER_DIRECT_URL}?${params.toString()}`, {
       method: 'POST',
@@ -25,11 +30,7 @@ export const fetchBrouterRoute = async ({ profile, points, signal }) => {
     return res.text()
   }
 
-  const params = new URLSearchParams()
-  params.set('lonlats', points)
   params.set('profile', profile || 'trekking')
-  params.set('alternativeidx', '0')
-  params.set('format', 'gpx')
 
   const res = await fetch(`${BROUTER_DIRECT_URL}?${params.toString()}`, { signal })
   if (!res.ok) {

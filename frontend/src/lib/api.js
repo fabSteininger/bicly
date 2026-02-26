@@ -25,10 +25,10 @@ export const buildBrouterRouteUrl = ({ profile, points }) => {
 }
 
 export const ROUTING_PROFILES = [
-  { id: 'trekking', name: 'Fahrrad', value: 'trekking' },
-  { id: 'trekking-noferries', name: 'No Ferries', value: 'trekking-noferries' },
-  { id: 'fastbike', name: 'Fastbike', value: 'fastbike' },
-  { id: 'vm-forum-liegerad-schnell', name: 'Liegerad (schnell)', value: 'vm-forum-liegerad-schnell' },
+  { id: 'trekking', name: 'trekking' },
+  { id: 'trekking-noferries', name: 'trekking-noferries' },
+  { id: 'fastbike', name: 'fastbike' },
+  { id: 'vm-forum-liegerad-schnell', name: 'vm-forum-liegerad-schnell' },
 ]
 
 export const loadProfiles = async () => {

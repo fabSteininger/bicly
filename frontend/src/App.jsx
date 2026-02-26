@@ -149,9 +149,17 @@ const TEXT = {
     openRouteDetailsSheet: 'Open route details', closeRouteDetailsSheet: 'Close route details',
     routeDetailsUnavailable: 'Generate a route to see distance and elevation details.',
     elevationFocusHint: 'Hover (desktop) or drag (touch) to highlight the matching map position.',
+    profile_trekking: 'Bike',
+    profile_trekking_noferries: 'Bike (no ferries)',
+    profile_fastbike: 'Road bike',
+    profile_liegerad: 'Recumbent',
   },
   de: {
     appTitle: 'Bicly', appSub: 'Fahrradfreundliche Routenplanung mit lokaler GPX-Bibliothek.', planner: 'Planer', library: 'Bibliothek',
+    profile_trekking: 'Rad',
+    profile_trekking_noferries: 'Rad ohne Fähren',
+    profile_fastbike: 'Rennrad',
+    profile_liegerad: 'Liegerad',
     language: 'Sprache', profile: 'Routing-Profil', title: 'Routentitel', clearPins: 'Pins löschen',
     saveGenerated: 'Generierte GPX speichern', routeReady: 'Route erzeugt und auf der Karte angezeigt.',
     addPinsHint: 'Klicke auf die Karte, um Pins hinzuzufügen. Links kannst du sie sortieren.',
@@ -824,7 +832,7 @@ export default function App() {
         <section className="flex-1 flex flex-col min-w-0 relative">
           <section ref={mapRef} className="flex-1 min-h-0 relative" onClick={() => setPlannerPanelOpen(false)}>
           </section>
-          <section className={`flex-none flex flex-col overflow-hidden bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 transition-all duration-300 z-[200] min-h-[3rem] ${showRouteDetails ? 'h-[60%]' : 'h-12'}`}>
+          <section className={`flex-none flex flex-col overflow-hidden bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 transition-all duration-300 z-[200] min-h-[3rem] ${showRouteDetails ? 'h-auto max-h-[60%]' : 'h-12'}`}>
             <button
               type="button"
               className="flex-none flex justify-between items-center px-4 h-12 w-full font-bold hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors disabled:opacity-50"
@@ -859,7 +867,15 @@ export default function App() {
           <div>
             <label className={labelBase}>{t.profile}</label>
             <select className={inputBase} value={activeProfile} onChange={(e) => { setActiveProfile(e.target.value); setIsExternalRoute(false); }}>
-              {profiles.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+              {profiles.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.id === 'trekking' ? t.profile_trekking :
+                   p.id === 'trekking-noferries' ? t.profile_trekking_noferries :
+                   p.id === 'fastbike' ? t.profile_fastbike :
+                   p.id === 'vm-forum-liegerad-schnell' ? t.profile_liegerad :
+                   p.name}
+                </option>
+              ))}
             </select>
           </div>
 
@@ -945,8 +961,6 @@ export default function App() {
             </select>
           </div>
         </div>
-
-        <button className={`${btnSecondary} self-start`} type="button" onClick={() => setActivePage('planner')}>{t.backToPlanner}</button>
       </section>}
 
       {activePage === 'impressum' && <section className="flex-1 overflow-y-auto p-4 md:p-8 max-w-3xl mx-auto w-full flex flex-col gap-6">

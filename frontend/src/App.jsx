@@ -14,7 +14,7 @@ import {
 } from 'chart.js'
 import { Line } from 'react-chartjs-2'
 import WaypointList from './components/WaypointList'
-import { buildBrouterRouteUrl, loadProfiles, fetchBrouterRoute, uploadProfile } from './lib/api'
+import { loadProfiles, fetchBrouterRoute } from './lib/api'
 
 const verticalLinePlugin = {
   id: 'verticalLine',
@@ -143,22 +143,23 @@ const TEXT = {
     privacyPolicy: 'Privacy policy', impressum: 'Impressum', backToPlanner: 'Back to planner',
     privacyHeading: 'Privacy policy', impressumHeading: 'Impressum',
     settings: 'Settings', settingsHeading: 'App settings',
-    generalSettings: 'General settings', routingSettings: 'Routing settings',
-    customProfile: 'Custom profile', customProfilePlaceholder: 'Paste your .brf profile here...',
-    routingProfiles: 'Routing profiles', addProfile: 'Add profile',
-    profileName: 'Profile name', profileContent: 'Profile content (.brf)',
-    saveProfile: 'Save profile', deleteProfile: 'Delete profile',
-    expandChart: 'Expand chart', collapseChart: 'Collapse chart',
+    generalSettings: 'General settings',
     distance: 'Distance', ascent: 'Ascent', descent: 'Descent',
     elevationProfile: 'Elevation profile', steepLegend: 'Steepness (10°+ = red)',
-    roundTrip: 'Round trip', roundTripDistance: 'Distance (m)', roundTripDirection: 'Direction (°)', roundTripPoints: 'Number of points',
-    uploadBrf: 'Upload .brf',
     openRouteDetailsSheet: 'Open route details', closeRouteDetailsSheet: 'Close route details',
     routeDetailsUnavailable: 'Generate a route to see distance and elevation details.',
     elevationFocusHint: 'Hover (desktop) or drag (touch) to highlight the matching map position.',
+    profile_trekking: 'Bike',
+    profile_trekking_noferries: 'Bike (no ferries)',
+    profile_fastbike: 'Road bike',
+    profile_liegerad: 'Recumbent',
   },
   de: {
     appTitle: 'Bicly', appSub: 'Fahrradfreundliche Routenplanung mit lokaler GPX-Bibliothek.', planner: 'Planer', library: 'Bibliothek',
+    profile_trekking: 'Rad',
+    profile_trekking_noferries: 'Rad ohne Fähren',
+    profile_fastbike: 'Rennrad',
+    profile_liegerad: 'Liegerad',
     language: 'Sprache', profile: 'Routing-Profil', title: 'Routentitel', clearPins: 'Pins löschen',
     saveGenerated: 'Generierte GPX speichern', routeReady: 'Route erzeugt und auf der Karte angezeigt.',
     addPinsHint: 'Klicke auf die Karte, um Pins hinzuzufügen. Links kannst du sie sortieren.',
@@ -175,16 +176,9 @@ const TEXT = {
     privacyPolicy: 'Datenschutz', impressum: 'Impressum', backToPlanner: 'Zurück zum Planer',
     privacyHeading: 'Datenschutzerklärung', impressumHeading: 'Impressum',
     settings: 'Einstellungen', settingsHeading: 'App-Einstellungen',
-    generalSettings: 'Allgemeine Einstellungen', routingSettings: 'Routing-Einstellungen',
-    customProfile: 'Benutzerdefiniertes Profil', customProfilePlaceholder: 'Füge dein .brf Profil hier ein...',
-    routingProfiles: 'Routing-Profile', addProfile: 'Profil hinzufügen',
-    profileName: 'Profilname', profileContent: 'Profilinhalt (.brf)',
-    saveProfile: 'Profil speichern', deleteProfile: 'Profil löschen',
-    expandChart: 'Profil vergrößern', collapseChart: 'Profil verkleinern',
+    generalSettings: 'Allgemeine Einstellungen',
     distance: 'Distanz', ascent: 'Anstieg', descent: 'Abstieg',
     elevationProfile: 'Höhenprofil', steepLegend: 'Steigung (ab 10° = rot)',
-    roundTrip: 'Rundtrip', roundTripDistance: 'Distanz (m)', roundTripDirection: 'Richtung (°)', roundTripPoints: 'Anzahl der Punkte',
-    uploadBrf: '.brf hochladen',
     openRouteDetailsSheet: 'Routendetails öffnen', closeRouteDetailsSheet: 'Routendetails schließen',
     routeDetailsUnavailable: 'Erzeuge eine Route, um Distanz- und Höhendetails zu sehen.',
     elevationFocusHint: 'Fahre mit der Maus darüber (Desktop) oder ziehe mit dem Finger, um die Kartenposition zu markieren.',
@@ -494,16 +488,12 @@ export default function App() {
   const [activePage, setActivePage] = useState('planner')
   const [waypoints, setWaypoints] = useState(() => Array.isArray(plannerDraft?.waypoints) ? plannerDraft.waypoints : [])
   const [profiles, setProfiles] = useState([])
-  const [customProfiles, setCustomProfiles] = useState(() => JSON.parse(localStorage.getItem('bicly_custom_profiles') || '[]'))
   const [activeProfile, setActiveProfile] = useState(() => typeof plannerDraft?.activeProfile === 'string' ? plannerDraft.activeProfile : 'trekking')
-  const [customProfileContent, setCustomProfileContent] = useState(() => localStorage.getItem('bicly_custom_profile_tmp') || '')
   const [latestGpx, setLatestGpx] = useState(() => typeof plannerDraft?.latestGpx === 'string' ? plannerDraft.latestGpx : '')
   const [routeGeoJson, setRouteGeoJson] = useState(() => plannerDraft?.routeGeoJson?.type === 'FeatureCollection' ? plannerDraft.routeGeoJson : emptyRouteGeoJson)
   const [title, setTitle] = useState(() => typeof plannerDraft?.title === 'string' ? plannerDraft.title : 'New Route')
   const [uploadTitle, setUploadTitle] = useState('')
   const [uploadGpxFile, setUploadGpxFile] = useState(null)
-  const [newProfileName, setNewProfileName] = useState('')
-  const [newProfileContent, setNewProfileContent] = useState('')
   const [savedRoutes, setSavedRoutes] = useState(() => JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '[]'))
   const [message, setMessage] = useState('')
   const [routingError, setRoutingError] = useState('')
@@ -514,12 +504,7 @@ export default function App() {
   const [plannerPanelOpen, setPlannerPanelOpen] = useState(false)
   const [showSubtitle, setShowSubtitle] = useState(false)
   const [userMenuOpen, setUserMenuOpen] = useState(false)
-  const [headerExpanded, setHeaderExpanded] = useState(false)
   const [showRouteDetails, setShowRouteDetails] = useState(true)
-  const [isRoundTrip, setIsRoundTrip] = useState(() => Boolean(plannerDraft?.isRoundTrip))
-  const [roundTripDistance, setRoundTripDistance] = useState(() => plannerDraft?.roundTripDistance ?? 1500)
-  const [roundTripDirection, setRoundTripDirection] = useState(() => plannerDraft?.roundTripDirection ?? -1)
-  const [roundTripPoints, setRoundTripPoints] = useState(() => plannerDraft?.roundTripPoints ?? 5)
   const [routeStats, setRouteStats] = useState(() => plannerDraft?.routeStats?.elevationProfile ? plannerDraft.routeStats : emptyRouteStats)
   const [activeElevationPoint, setActiveElevationPoint] = useState(null)
   const [isExternalRoute, setIsExternalRoute] = useState(false)
@@ -528,18 +513,13 @@ export default function App() {
   useEffect(() => { localStorage.setItem(STORAGE_KEY, JSON.stringify(savedRoutes)) }, [savedRoutes])
   useEffect(() => {
     loadProfiles().then((rows) => {
-      const all = [...rows, ...customProfiles]
-      setProfiles(all)
-      if (!all[0]) return
+      setProfiles(rows)
+      if (!rows[0]) return
       setActiveProfile((prev) => {
-        return all.some((p) => p.id === prev) ? prev : all[0].id
+        return rows.some((p) => p.id === prev) ? prev : rows[0].id
       })
     })
-  }, [customProfiles])
-
-  useEffect(() => {
-    localStorage.setItem('bicly_custom_profiles', JSON.stringify(customProfiles))
-  }, [customProfiles])
+  }, [])
 
   useEffect(() => {
     localStorage.setItem(PLANNER_DRAFT_KEY, JSON.stringify({
@@ -550,15 +530,8 @@ export default function App() {
       title,
       routeStats,
       showRouteDetails,
-      isRoundTrip,
-      roundTripDistance,
-      roundTripDirection,
-      roundTripPoints,
     }))
-    if (activeProfile === 'custom') {
-      localStorage.setItem('bicly_custom_profile_tmp', customProfileContent)
-    }
-  }, [waypoints, activeProfile, customProfileContent, latestGpx, routeGeoJson, title, routeStats, showRouteDetails])
+  }, [waypoints, activeProfile, latestGpx, routeGeoJson, title, routeStats, showRouteDetails])
 
   useEffect(() => {
     if (!navigator.geolocation) return
@@ -682,29 +655,16 @@ export default function App() {
   }, [map, activeElevationPoint])
 
   useEffect(() => {
-    const minPoints = isRoundTrip ? 1 : 2
-    if (waypoints.length < minPoints) { setLatestGpx(''); setRouteGeoJson(emptyRouteGeoJson); setRouteStats(emptyRouteStats); return }
+    if (waypoints.length < 2) { setLatestGpx(''); setRouteGeoJson(emptyRouteGeoJson); setRouteStats(emptyRouteStats); return }
     if (isExternalRoute) return
 
     const controller = new AbortController()
-    const profileToUse = activeProfile === 'custom' ? customProfileContent : activeProfile
-
-    if (activeProfile === 'custom' && !customProfileContent) return
-
-    const isCustomSaved = customProfiles.find((p) => p.id === activeProfile)
-    const finalProfile = isCustomSaved
-      ? (isCustomSaved.id.startsWith('custom_') ? isCustomSaved.id : isCustomSaved.content)
-      : profileToUse
 
     setRoutingError('')
     fetchBrouterRoute({
-      profile: finalProfile,
+      profile: activeProfile,
       points: brouterPoints,
       signal: controller.signal,
-      engineMode: isRoundTrip ? '4' : undefined,
-      roundTripDistance: isRoundTrip ? roundTripDistance : undefined,
-      direction: isRoundTrip ? roundTripDirection : undefined,
-      roundTripPoints: isRoundTrip ? roundTripPoints : undefined,
     })
       .then((text) => { setLatestGpx(text); setRouteGeoJson(parseGpxToGeoJson(text)); setRouteStats(parseGpxStats(text)) })
       .catch((err) => {
@@ -713,7 +673,7 @@ export default function App() {
         }
       })
     return () => controller.abort()
-  }, [activeProfile, customProfileContent, brouterPoints, waypoints.length, isExternalRoute, isRoundTrip, roundTripDistance, roundTripDirection, roundTripPoints])
+  }, [activeProfile, brouterPoints, waypoints.length, isExternalRoute])
 
 
   useEffect(() => {
@@ -809,34 +769,6 @@ export default function App() {
     }
   }
 
-  const addCustomProfile = async () => {
-    if (!newProfileName || !newProfileContent) return
-    let id
-    try {
-      const data = await uploadProfile(newProfileContent)
-      id = data.profileid || crypto.randomUUID()
-    } catch (err) {
-      console.error('Failed to upload profile, saving locally:', err)
-      id = crypto.randomUUID()
-    }
-    setCustomProfiles((prev) => [...prev, { id, name: newProfileName, content: newProfileContent }])
-    setNewProfileName('')
-    setNewProfileContent('')
-  }
-
-  const deleteCustomProfile = (id) => {
-    setCustomProfiles((prev) => prev.filter((p) => p.id !== id))
-    if (activeProfile === id) setActiveProfile('trekking')
-  }
-
-  const handleProfileUpload = async (e) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    const content = await file.text()
-    setNewProfileContent(content)
-    if (!newProfileName) setNewProfileName(file.name.replace('.brf', ''))
-  }
-
   return (
     <div className={`flex h-screen w-screen overflow-hidden relative bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 ${userMenuOpen ? 'menu-open' : ''}`}>
       <aside className={`fixed inset-y-0 left-0 w-72 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 z-[300] flex flex-col transition-transform duration-300 transform ${userMenuOpen ? 'translate-x-0' : '-translate-x-full'} md:relative md:translate-x-0 ${userMenuOpen ? '' : 'md:ml-[-288px]'}`}>
@@ -900,7 +832,7 @@ export default function App() {
         <section className="flex-1 flex flex-col min-w-0 relative">
           <section ref={mapRef} className="flex-1 min-h-0 relative" onClick={() => setPlannerPanelOpen(false)}>
           </section>
-          <section className={`flex-none flex flex-col overflow-hidden bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 transition-all duration-300 z-[200] min-h-[3rem] ${showRouteDetails ? 'h-[60%]' : 'h-12'}`}>
+          <section className={`flex-none flex flex-col overflow-hidden bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 transition-all duration-300 z-[200] min-h-[3rem] ${showRouteDetails ? 'h-auto max-h-[60%]' : 'h-12'}`}>
             <button
               type="button"
               className="flex-none flex justify-between items-center px-4 h-12 w-full font-bold hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors disabled:opacity-50"
@@ -935,55 +867,18 @@ export default function App() {
           <div>
             <label className={labelBase}>{t.profile}</label>
             <select className={inputBase} value={activeProfile} onChange={(e) => { setActiveProfile(e.target.value); setIsExternalRoute(false); }}>
-              {profiles.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-              <option value="custom">{t.customProfile}</option>
+              {profiles.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.id === 'trekking' ? t.profile_trekking :
+                   p.id === 'trekking-noferries' ? t.profile_trekking_noferries :
+                   p.id === 'fastbike' ? t.profile_fastbike :
+                   p.id === 'vm-forum-liegerad-schnell' ? t.profile_liegerad :
+                   p.name}
+                </option>
+              ))}
             </select>
-            {activeProfile === 'custom' && (
-              <div className="flex flex-col gap-2 mt-2">
-                <textarea
-                  className={`${inputBase} font-mono text-xs`}
-                  value={customProfileContent}
-                  onChange={(e) => setCustomProfileContent(e.target.value)}
-                  placeholder={t.customProfilePlaceholder}
-                  rows={5}
-                />
-                <div className="flex items-center gap-2">
-                  <label className={`${btnSecondary} text-[10px] py-1 px-2 cursor-pointer flex-1 text-center`}>
-                    {t.uploadBrf}
-                    <input type="file" accept=".brf" className="hidden" onChange={async (e) => {
-                      const file = e.target.files?.[0]
-                      if (file) setCustomProfileContent(await file.text())
-                    }} />
-                  </label>
-                </div>
-              </div>
-            )}
           </div>
 
-          <div className="flex flex-col gap-3 p-3 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-700">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" checked={isRoundTrip} onChange={(e) => setIsRoundTrip(e.target.checked)} />
-              <span className="font-bold text-sm uppercase tracking-wider text-slate-700 dark:text-slate-300">{t.roundTrip}</span>
-            </label>
-            {isRoundTrip && (
-              <div className="grid grid-cols-1 gap-3 mt-1">
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">{t.roundTripDistance}</label>
-                  <input type="number" className={inputBase} value={roundTripDistance} onChange={(e) => setRoundTripDistance(Number(e.target.value))} step="500" min="500" />
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">{t.roundTripDirection}</label>
-                    <input type="number" className={inputBase} value={roundTripDirection} onChange={(e) => setRoundTripDirection(Number(e.target.value))} min="-1" max="360" />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">{t.roundTripPoints}</label>
-                    <input type="number" className={inputBase} value={roundTripPoints} onChange={(e) => setRoundTripPoints(Number(e.target.value))} min="2" max="10" />
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
           <div>
             <label className={labelBase}>{t.title}</label>
             <input className={inputBase} value={title} onChange={(e) => setTitle(e.target.value)} />
@@ -1066,39 +961,6 @@ export default function App() {
             </select>
           </div>
         </div>
-
-        <div className="p-6 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-3xl shadow-sm flex flex-col gap-4">
-          <h3 className="text-xl font-bold">{t.routingProfiles}</h3>
-          <div className="flex flex-col gap-4">
-            <div>
-              <label className={labelBase}>{t.profileName}</label>
-              <input className={inputBase} value={newProfileName} onChange={(e) => setNewProfileName(e.target.value)} placeholder="e.g. My Custom MTB" />
-            </div>
-            <div>
-              <label className={labelBase}>{t.profileContent}</label>
-              <textarea
-                className={`${inputBase} font-mono text-xs`}
-                value={newProfileContent}
-                onChange={(e) => setNewProfileContent(e.target.value)}
-                placeholder={t.customProfilePlaceholder}
-                rows={5}
-              />
-            </div>
-            <input type="file" accept=".brf" onChange={handleProfileUpload} />
-            <button className={btnPrimary} onClick={addCustomProfile} disabled={!newProfileName || !newProfileContent}>{t.addProfile}</button>
-          </div>
-
-          <div className="mt-4 border-t border-slate-100 dark:border-slate-700 pt-4 flex flex-col gap-2">
-            {customProfiles.map((p) => (
-              <div key={p.id} className="flex justify-between items-center p-3 bg-slate-50 dark:bg-slate-900/50 rounded-xl">
-                <span className="font-medium">{p.name}</span>
-                <button className={btnDanger} onClick={() => deleteCustomProfile(p.id)}>{t.deleteProfile}</button>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <button className={`${btnSecondary} self-start`} type="button" onClick={() => setActivePage('planner')}>{t.backToPlanner}</button>
       </section>}
 
       {activePage === 'impressum' && <section className="flex-1 overflow-y-auto p-4 md:p-8 max-w-3xl mx-auto w-full flex flex-col gap-6">

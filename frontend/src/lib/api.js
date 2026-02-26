@@ -52,4 +52,26 @@ export const ROUTING_PROFILES = [
   { id: 'vm-forum-liegerad-schnell', name: 'Liegerad (schnell)', value: 'vm-forum-liegerad-schnell' },
 ]
 
-export const loadProfiles = async () => ROUTING_PROFILES
+export const uploadProfile = async (profileContent) => {
+  const res = await fetch(`${BROUTER_DIRECT_URL}/profiles`, {
+    method: 'POST',
+    body: profileContent,
+  })
+  if (!res.ok) {
+    const errorText = await res.text()
+    throw new Error(errorText || `Profile upload failed (${res.status})`)
+  }
+  return res.json()
+}
+
+export const loadProfiles = async () => {
+  try {
+    const res = await fetch(`${BROUTER_DIRECT_URL}/profiles`)
+    if (res.ok) {
+      return await res.json()
+    }
+  } catch (e) {
+    console.error('Failed to load profiles from server, using defaults', e)
+  }
+  return ROUTING_PROFILES
+}

@@ -26,7 +26,7 @@ const verticalLinePlugin = {
       if (xPos >= chart.chartArea.left && xPos <= chart.chartArea.right) {
         ctx.save()
         ctx.beginPath()
-        ctx.strokeStyle = '#0f172a'
+        ctx.strokeStyle = chart.options.plugins.verticalLine?.isDarkMode ? '#f1f5f9' : '#0f172a'
         ctx.lineWidth = 1
         ctx.setLineDash([3, 3])
         ctx.moveTo(xPos, top)
@@ -43,10 +43,10 @@ const verticalLinePlugin = {
             const yPos = y.getPixelForValue(activePoint.elevationM)
             ctx.save()
             ctx.beginPath()
-            ctx.fillStyle = '#0f172a'
+            ctx.fillStyle = chart.options.plugins.verticalLine?.isDarkMode ? '#f1f5f9' : '#0f172a'
             ctx.arc(xPos, yPos, 4, 0, 2 * Math.PI)
             ctx.fill()
-            ctx.strokeStyle = '#fff'
+            ctx.strokeStyle = chart.options.plugins.verticalLine?.isDarkMode ? '#0f172a' : '#fff'
             ctx.lineWidth = 1.5
             ctx.stroke()
             ctx.restore()
@@ -79,7 +79,7 @@ const PLANNER_DRAFT_KEY = 'bicly_planner_draft'
 
 const emptyRouteGeoJson = { type: 'FeatureCollection', features: [] }
 
-const emptyRouteStats = { distanceKm: 0, ascentM: 0, descentM: 0, rawSummary: '', elevationProfile: [] }
+const emptyRouteStats = { distanceKm: 0, ascentM: 0, descentM: 0, rawSummary: '', elevationProfile: [], timeS: 0, energyJ: 0 }
 
 const btnBase = "px-4 py-2 rounded-xl transition-all active:scale-95 disabled:opacity-50 disabled:active:scale-100"
 const btnPrimary = `${btnBase} bg-blue-600 text-white hover:bg-blue-700 shadow-sm`
@@ -89,7 +89,7 @@ const inputBase = "w-full p-2 rounded-xl border border-slate-200 dark:border-sla
 const labelBase = "block text-sm font-bold mb-1 text-slate-500 dark:text-slate-400 uppercase tracking-wider"
 
 const HamburgerIcon = () => (
-  <svg viewBox="0 0 122.88 95.95" aria-hidden="true" focusable="false">
+  <svg viewBox="0 0 122.88 95.95" aria-hidden="true" focusable="false" fill="currentColor">
     <path d="M8.94,0h105c4.92,0,8.94,4.02,8.94,8.94l0,0c0,4.92-4.02,8.94-8.94,8.94h-105C4.02,17.88,0,13.86,0,8.94l0,0 C0,4.02,4.02,0,8.94,0L8.94,0z M8.94,78.07h105c4.92,0,8.94,4.02,8.94,8.94l0,0c0,4.92-4.02,8.94-8.94,8.94h-105 C4.02,95.95,0,91.93,0,87.01l0,0C0,82.09,4.02,78.07,8.94,78.07L8.94,78.07z M8.94,39.03h105c4.92,0,8.94,4.02,8.94,8.94l0,0 c0,4.92-4.02,8.94-8.94,8.94h-105C4.02,56.91,0,52.89,0,47.97l0,0C0,43.06,4.02,39.03,8.94,39.03L8.94,39.03z" />
   </svg>
 )
@@ -153,9 +153,23 @@ const TEXT = {
     profile_trekking_noferries: 'Bike (no ferries)',
     profile_fastbike: 'Road bike',
     profile_liegerad: 'Recumbent',
+    travelTime: 'Travel time',
+    energy: 'Energy',
+    gummyBears: 'You need {{count}} gummy bears for this! 🍬',
+    mass: 'Total weight (incl. bike)',
+    showPOIs: 'Show toilets & water',
+    toilets: 'Toilets',
+    water: 'Drinking water',
   },
   de: {
     appTitle: 'Bicly', appSub: 'Fahrradfreundliche Routenplanung mit lokaler GPX-Bibliothek.', planner: 'Planer', library: 'Bibliothek',
+    travelTime: 'Fahrzeit',
+    energy: 'Energie',
+    gummyBears: 'Dafür brauchst du {{count}} Gummibärchen! 🍬',
+    mass: 'Gesamtgewicht (inkl. Rad)',
+    showPOIs: 'Toiletten & Wasser anzeigen',
+    toilets: 'Toiletten',
+    water: 'Trinkwasser',
     profile_trekking: 'Rad',
     profile_trekking_noferries: 'Rad ohne Fähren',
     profile_fastbike: 'Rennrad',
@@ -250,6 +264,7 @@ const ElevationChart = ({ profile, title, legend, hoverHint, activeDistanceM, on
       verticalLine: {
         activeDistanceM,
         profile: displayProfile,
+        isDarkMode,
       },
     },
     scales: {
@@ -364,14 +379,42 @@ const parseGpxStats = (gpxText) => {
     }
 
     const rawSummary = xml.querySelector('metadata > desc')?.textContent?.trim() ?? ''
+
+    // Parse energy and time if available (usually in BRouter GPX description or comments)
+    let energyJ = 0
+    let timeS = 0
+
+    // Energy: try Joules or kWh
+    const energyMatchJ = gpxText.match(/Energy[:=]\s*([\d.]+)\s*J/i)
+    const energyMatchKWh = gpxText.match(/energy[:=]\s*([\d.]+)\s*kWh/i)
+    if (energyMatchJ) {
+      energyJ = parseFloat(energyMatchJ[1])
+    } else if (energyMatchKWh) {
+      energyJ = parseFloat(energyMatchKWh[1]) * 3600000
+    }
+
+    // Time: try seconds or H M S format
+    const timeMatchS = gpxText.match(/Time[:=]\s*([\d.]+)\s*s(?!\w)/i)
+    const timeMatchHMS = gpxText.match(/time[:=]\s*(?:(\d+)h\s*)?(?:(\d+)m\s*)?(?:(\d+)s)?/i)
+
+    if (timeMatchS) {
+      timeS = parseFloat(timeMatchS[1])
+    } else if (timeMatchHMS && (timeMatchHMS[1] || timeMatchHMS[2] || timeMatchHMS[3])) {
+      const h = parseInt(timeMatchHMS[1] || 0)
+      const m = parseInt(timeMatchHMS[2] || 0)
+      const s = parseInt(timeMatchHMS[3] || 0)
+      timeS = h * 3600 + m * 60 + s
+    }
+
     return {
       distanceKm: distanceMeters / 1000,
       ascentM,
       descentM,
       rawSummary,
+      energyJ,
+      timeS,
       waypoints,
       elevationProfile: trkpts.reduce((acc, point, index) => {
-        if (!Number.isFinite(point.ele)) return acc
         if (!index) return [{ distanceM: 0, elevationM: point.ele, slopeDeg: 0, lon: point.lon, lat: point.lat }]
         const previous = trkpts[index - 1]
         const previousDistance = acc[acc.length - 1]?.distanceM ?? 0
@@ -446,10 +489,33 @@ const readPlannerDraft = () => {
   }
 }
 
+const POI_SOURCE_ID = 'poi-source'
+const POI_LAYER_ID = 'poi-layer'
+
 const ensureRouteLayer = (map) => {
   if (!map.getSource(ROUTE_SOURCE_ID)) map.addSource(ROUTE_SOURCE_ID, { type: 'geojson', data: emptyRouteGeoJson })
   if (!map.getLayer(ROUTE_LAYER_ID)) {
     map.addLayer({ id: ROUTE_LAYER_ID, type: 'line', source: ROUTE_SOURCE_ID, paint: { 'line-color': '#0c5ff4', 'line-width': 4, 'line-opacity': 0.9 } })
+  }
+  if (!map.getSource(POI_SOURCE_ID)) map.addSource(POI_SOURCE_ID, { type: 'geojson', data: emptyRouteGeoJson })
+  if (!map.getLayer(POI_LAYER_ID)) {
+    map.addLayer({
+      id: POI_LAYER_ID,
+      type: 'circle',
+      source: POI_SOURCE_ID,
+      paint: {
+        'circle-radius': 6,
+        'circle-color': [
+          'match',
+          ['get', 'amenity'],
+          'drinking_water', '#3b82f6',
+          'toilets', '#8b4513',
+          '#64748b',
+        ],
+        'circle-stroke-width': 2,
+        'circle-stroke-color': '#ffffff',
+      },
+    })
   }
   if (!map.getSource(ROUTE_HOVER_SOURCE_ID)) map.addSource(ROUTE_HOVER_SOURCE_ID, { type: 'geojson', data: emptyRouteGeoJson })
   if (!map.getLayer(ROUTE_HOVER_LAYER_ID)) {
@@ -487,6 +553,9 @@ export default function App() {
   const mapMarkers = useRef([])
   const [activePage, setActivePage] = useState('planner')
   const [waypoints, setWaypoints] = useState(() => Array.isArray(plannerDraft?.waypoints) ? plannerDraft.waypoints : [])
+  const [mass, setMass] = useState(() => Number(localStorage.getItem('bicly_mass')) || 90)
+  const [showPOIs, setShowPOIs] = useState(() => localStorage.getItem('bicly_show_pois') === 'true')
+  const [poiData, setPoiData] = useState(emptyRouteGeoJson)
   const [profiles, setProfiles] = useState([])
   const [activeProfile, setActiveProfile] = useState(() => typeof plannerDraft?.activeProfile === 'string' ? plannerDraft.activeProfile : 'trekking')
   const [latestGpx, setLatestGpx] = useState(() => typeof plannerDraft?.latestGpx === 'string' ? plannerDraft.latestGpx : '')
@@ -561,7 +630,7 @@ export default function App() {
     if (activePage !== 'planner' || !mapRef.current) return
     const m = new maplibregl.Map({
       container: mapRef.current,
-      style: mapStyle,
+      style: isDarkMode ? 'https://tiles.openfreemap.org/styles/dark' : mapStyle,
       center: userLocation ? [userLocation.lon, userLocation.lat] : [8.68, 50.11],
       zoom: 10,
     })
@@ -578,6 +647,7 @@ export default function App() {
     m.on('style.load', () => {
       ensureRouteLayer(m)
       m.getSource(ROUTE_SOURCE_ID)?.setData(routeGeoJson)
+      m.getSource(POI_SOURCE_ID)?.setData(poiData)
     })
     m.on('click', (e) => addWaypoint('', e.lngLat.lng, e.lngLat.lat))
 
@@ -588,7 +658,7 @@ export default function App() {
       setMap(null)
       hasInitialFit.current = false
     }
-  }, [activePage])
+  }, [activePage, isDarkMode])
 
   useEffect(() => {
     if (message) {
@@ -655,6 +725,11 @@ export default function App() {
   }, [map, activeElevationPoint])
 
   useEffect(() => {
+    localStorage.setItem('bicly_mass', mass)
+    localStorage.setItem('bicly_show_pois', showPOIs)
+  }, [mass, showPOIs])
+
+  useEffect(() => {
     if (waypoints.length < 2) { setLatestGpx(''); setRouteGeoJson(emptyRouteGeoJson); setRouteStats(emptyRouteStats); return }
     if (isExternalRoute) return
 
@@ -665,6 +740,7 @@ export default function App() {
       profile: activeProfile,
       points: brouterPoints,
       signal: controller.signal,
+      mass,
     })
       .then((text) => { setLatestGpx(text); setRouteGeoJson(parseGpxToGeoJson(text)); setRouteStats(parseGpxStats(text)) })
       .catch((err) => {
@@ -673,7 +749,7 @@ export default function App() {
         }
       })
     return () => controller.abort()
-  }, [activeProfile, brouterPoints, waypoints.length, isExternalRoute])
+  }, [activeProfile, brouterPoints, waypoints.length, isExternalRoute, mass])
 
 
   useEffect(() => {
@@ -702,6 +778,45 @@ export default function App() {
     setSavedRoutes((prev) => [{ id: crypto.randomUUID(), title: title.trim() || 'Route', gpx: fullGpx }, ...prev])
     setMessage(t.statusSaved)
   }
+
+  const fetchPOIs = async (m) => {
+    if (!m || !showPOIs) return
+    const bounds = m.getBounds()
+    const bbox = `${bounds.getSouth()},${bounds.getWest()},${bounds.getNorth()},${bounds.getEast()}`
+    const query = `[out:json][timeout:25];(node["amenity"="toilets"](${bbox});node["amenity"="drinking_water"](${bbox}););out body;`
+    try {
+      const res = await fetch(`https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`)
+      if (!res.ok) return
+      const data = await res.json()
+      const geojson = {
+        type: 'FeatureCollection',
+        features: (data.elements || []).map((e) => ({
+          type: 'Feature',
+          geometry: { type: 'Point', coordinates: [e.lon, e.lat] },
+          properties: { amenity: e.tags.amenity },
+        })),
+      }
+      setPoiData(geojson)
+    } catch {
+      // Ignore errors
+    }
+  }
+
+  useEffect(() => {
+    if (!map || !showPOIs) {
+      setPoiData(emptyRouteGeoJson)
+      return
+    }
+    const handler = () => fetchPOIs(map)
+    map.on('moveend', handler)
+    handler()
+    return () => map.off('moveend', handler)
+  }, [map, showPOIs])
+
+  useEffect(() => {
+    if (!map || !map.isStyleLoaded()) return
+    map.getSource(POI_SOURCE_ID)?.setData(poiData)
+  }, [map, poiData])
 
   const uploadGpx = async () => {
     if (!uploadGpxFile) return
@@ -770,58 +885,60 @@ export default function App() {
   }
 
   return (
-    <div className={`flex h-screen w-screen overflow-hidden relative bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 ${userMenuOpen ? 'menu-open' : ''}`}>
-      <aside className={`fixed inset-y-0 left-0 w-72 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 z-[300] flex flex-col transition-transform duration-300 transform ${userMenuOpen ? 'translate-x-0' : '-translate-x-full'} md:relative md:translate-x-0 ${userMenuOpen ? '' : 'md:ml-[-288px]'}`}>
-        <div className="flex justify-between items-center p-4 border-b border-slate-200 dark:border-slate-700">
-          <h3 className="text-lg font-bold">{t.appMenu}</h3>
-          <button type="button" className="text-2xl" onClick={() => setUserMenuOpen(false)}>✕</button>
+    <div className={`flex flex-col h-screen w-screen overflow-hidden bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100`}>
+      <header className="flex-none flex items-center justify-between gap-3 p-2 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 z-[500]">
+        <button type="button" className="flex items-center justify-center w-10 h-10 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors" aria-label={t.appMenu} onClick={() => setUserMenuOpen((prev) => !prev)}>
+          <span className="w-6 h-6"><HamburgerIcon /></span>
+        </button>
+        <div className="flex-1 min-w-0" onClick={() => setShowSubtitle((prev) => !prev)} style={{ cursor: 'pointer' }}>
+          <div className="text-xl font-extrabold truncate">{t.appTitle}</div>
+          <p className={`text-xs text-slate-500 dark:text-slate-400 truncate transition-all duration-300 ${showSubtitle ? 'max-h-10 opacity-100' : 'max-h-0 opacity-0 md:max-h-10 md:opacity-100'}`}>{t.appSub}</p>
         </div>
-        <div className="flex flex-col gap-1 p-4">
-          {[
-            { id: 'planner', label: t.planner },
-            { id: 'library', label: t.library },
-            { id: 'settings', label: t.settings },
-            { id: 'privacy', label: t.privacyPolicy },
-            { id: 'impressum', label: t.impressum },
-          ].map((item) => (
-            <button
-              key={item.id}
-              className={`text-left px-4 py-3 rounded-xl transition-colors ${activePage === item.id ? 'bg-blue-600 text-white' : 'hover:bg-slate-100 dark:hover:bg-slate-700'}`}
-              onClick={() => { setActivePage(item.id); setUserMenuOpen(false) }}
-            >
-              {item.label}
-            </button>
-          ))}
-        </div>
-      </aside>
-
-      <main className="flex-1 flex flex-col min-w-0 relative">
-        <header className="flex items-center justify-between gap-3 p-2 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 z-[100]">
-          <button type="button" className="flex items-center justify-center w-10 h-10 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors" aria-label={t.appMenu} onClick={() => setUserMenuOpen((prev) => !prev)}>
-            <span className="w-6 h-6"><HamburgerIcon /></span>
+        <div className="flex items-center gap-2">
+          <button type="button" className="flex items-center justify-center w-10 h-10 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors text-xl" onClick={() => setIsDarkMode(!isDarkMode)} aria-label="Toggle dark mode">
+            {isDarkMode ? '🌞' : '🌙'}
           </button>
-          <div className="flex-1 min-w-0" onClick={() => setShowSubtitle((prev) => !prev)} style={{ cursor: 'pointer' }}>
-            <div className="text-xl font-extrabold truncate">{t.appTitle}</div>
-            <p className={`text-xs text-slate-500 dark:text-slate-400 truncate transition-all duration-300 ${showSubtitle ? 'max-h-10 opacity-100' : 'max-h-0 opacity-0 md:max-h-10 md:opacity-100'}`}>{t.appSub}</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <button type="button" className="flex items-center justify-center w-10 h-10 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors text-xl" onClick={() => setIsDarkMode(!isDarkMode)} aria-label="Toggle dark mode">
-              {isDarkMode ? '🌞' : '🌙'}
+          {activePage === 'planner' && (
+            <button
+              type="button"
+              className="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-700 font-bold text-sm hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
+              aria-expanded={plannerPanelOpen}
+              aria-label={plannerPanelOpen ? t.closePlanner : t.openRouteTools}
+              onClick={(e) => { e.stopPropagation(); setPlannerPanelOpen((prev) => !prev) }}
+            >
+              <span className="w-4 h-4">{plannerPanelOpen ? <ArrowUpIcon /> : <ArrowDownIcon />}</span>
+              <span className="hidden md:inline">{plannerPanelOpen ? t.closePlanner : t.openPlanner}</span>
             </button>
-            {activePage === 'planner' && (
-              <button
-                type="button"
-                className="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-700 font-bold text-sm hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
-                aria-expanded={plannerPanelOpen}
-                aria-label={plannerPanelOpen ? t.closePlanner : t.openRouteTools}
-                onClick={(e) => { e.stopPropagation(); setPlannerPanelOpen((prev) => !prev) }}
-              >
-                <span className="w-4 h-4">{plannerPanelOpen ? <ArrowUpIcon /> : <ArrowDownIcon />}</span>
-                <span className="hidden md:inline">{plannerPanelOpen ? t.closePlanner : t.openPlanner}</span>
-              </button>
-            )}
+          )}
+        </div>
+      </header>
+
+      <div className="flex-1 flex min-h-0 relative">
+        <aside className={`absolute inset-0 z-[400] w-full md:w-72 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 flex flex-col transition-transform duration-300 transform ${userMenuOpen ? 'translate-y-0' : 'translate-y-full'} md:relative md:translate-y-0 md:translate-x-0 ${userMenuOpen ? '' : 'md:ml-[-288px]'}`}>
+          <div className="flex justify-between items-center p-4 border-b border-slate-200 dark:border-slate-700">
+            <h3 className="text-lg font-bold">{t.appMenu}</h3>
+            <button type="button" className="md:hidden text-2xl" onClick={() => setUserMenuOpen(false)}>✕</button>
           </div>
-        </header>
+          <div className="flex flex-col gap-1 p-4">
+            {[
+              { id: 'planner', label: t.planner },
+              { id: 'library', label: t.library },
+              { id: 'settings', label: t.settings },
+              { id: 'privacy', label: t.privacyPolicy },
+              { id: 'impressum', label: t.impressum },
+            ].map((item) => (
+              <button
+                key={item.id}
+                className={`text-left px-4 py-3 rounded-xl transition-colors ${activePage === item.id ? 'bg-blue-600 text-white' : 'hover:bg-slate-100 dark:hover:bg-slate-700'}`}
+                onClick={() => { setActivePage(item.id); setUserMenuOpen(false) }}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+        </aside>
+
+        <main className="flex-1 flex flex-col min-w-0 relative">
         {message && (
           <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[1000] px-4 py-2 bg-blue-600 text-white rounded-full shadow-2xl animate-bounce">
             {message}
@@ -849,7 +966,14 @@ export default function App() {
                 <span className="bg-slate-100 dark:bg-slate-700 px-3 py-1 rounded-full"><strong>{t.distance}:</strong> {routeStats.distanceKm.toFixed(1)} km</span>
                 <span className="bg-slate-100 dark:bg-slate-700 px-3 py-1 rounded-full"><strong>{t.ascent}:</strong> {Math.round(routeStats.ascentM)} m</span>
                 <span className="bg-slate-100 dark:bg-slate-700 px-3 py-1 rounded-full"><strong>{t.descent}:</strong> {Math.round(routeStats.descentM)} m</span>
+                {routeStats.timeS > 0 && <span className="bg-slate-100 dark:bg-slate-700 px-3 py-1 rounded-full"><strong>{t.travelTime}:</strong> {Math.floor(routeStats.timeS / 3600)}:{String(Math.floor((routeStats.timeS % 3600) / 60)).padStart(2, '0')} h</span>}
+                {routeStats.energyJ > 0 && <span className="bg-slate-100 dark:bg-slate-700 px-3 py-1 rounded-full"><strong>{t.energy}:</strong> {Math.round(routeStats.energyJ / 1000)} kJ</span>}
               </div>
+              {routeStats.energyJ > 0 && (
+                <div className="text-sm font-bold text-blue-600 dark:text-blue-400 animate-bounce">
+                  {t.gummyBears.replace('{{count}}', Math.round(routeStats.energyJ / 33500))}
+                </div>
+              )}
               {routeStats.rawSummary && <p className="text-sm text-slate-600 dark:text-slate-400 italic">{routeStats.rawSummary}</p>}
               <ElevationChart profile={routeStats.elevationProfile} title={t.elevationProfile} legend={t.steepLegend} hoverHint={t.elevationFocusHint} activeDistanceM={activeElevationPoint?.distanceM} onHoverPoint={setActiveElevationPoint} onLeave={() => setActiveElevationPoint(null)} t={t} isDarkMode={isDarkMode} />
             </section>
@@ -857,7 +981,7 @@ export default function App() {
             {showRouteDetails && !latestGpx && <p className="p-4 text-sm text-slate-500 italic">{t.routeDetailsUnavailable}</p>}
           </section>
         </section>
-        <aside className={`fixed inset-0 z-[400] bg-white dark:bg-slate-800 flex flex-col p-4 overflow-y-auto transition-transform duration-300 ${plannerPanelOpen ? 'translate-y-0' : 'translate-y-full'} md:static md:translate-y-0 md:w-96 md:border-l md:border-slate-200 md:dark:border-slate-700 ${plannerPanelOpen ? '' : 'md:mr-[-384px]'}`}>
+        <aside className={`absolute inset-0 z-[400] bg-white dark:bg-slate-800 flex flex-col p-4 overflow-y-auto transition-transform duration-300 ${plannerPanelOpen ? 'translate-y-0' : 'translate-y-full'} md:static md:translate-y-0 md:w-96 md:border-l md:border-slate-200 md:dark:border-slate-700 ${plannerPanelOpen ? '' : 'md:mr-[-384px]'}`}>
         <div className="flex justify-between items-center mb-4 pb-2 border-b border-slate-200 dark:border-slate-700">
           <h2 className="text-xl font-bold">{t.plannerHeading}</h2>
           <button type="button" className="md:hidden text-2xl" aria-label={t.closePlanner} onClick={() => setPlannerPanelOpen(false)}>✕</button>
@@ -960,6 +1084,14 @@ export default function App() {
               <option value="de">Deutsch</option>
             </select>
           </div>
+          <div>
+            <label className={labelBase}>{t.mass}</label>
+            <input type="number" className={inputBase} value={mass} onChange={(e) => setMass(Number(e.target.value))} />
+          </div>
+          <div className="flex items-center gap-3">
+            <input type="checkbox" id="show-pois" className="w-5 h-5 rounded-lg accent-blue-600" checked={showPOIs} onChange={(e) => setShowPOIs(e.target.checked)} />
+            <label htmlFor="show-pois" className="font-bold">{t.showPOIs}</label>
+          </div>
         </div>
       </section>}
 
@@ -973,6 +1105,7 @@ export default function App() {
         </div>
       </section>}
       </main>
+      </div>
     </div>
   )
 }

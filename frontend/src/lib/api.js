@@ -16,7 +16,7 @@ export const fetchBrouterRoute = async ({ profile, points, signal }) => {
     })
     if (!res.ok) {
       const errorText = await res.text()
-      throw new Error(errorText || 'BRouter custom profile request failed')
+      throw new Error(errorText || `BRouter custom profile request failed (${res.status})`)
     }
     return res.text()
   }
@@ -30,7 +30,7 @@ export const fetchBrouterRoute = async ({ profile, points, signal }) => {
   const res = await fetch(`${BROUTER_DIRECT_URL}?${params.toString()}`, { signal })
   if (!res.ok) {
     const errorText = await res.text()
-    throw new Error(errorText || 'BRouter request failed')
+    throw new Error(errorText || `BRouter request failed (${res.status})`)
   }
   return res.text()
 }
@@ -49,7 +49,7 @@ export const ROUTING_PROFILES = [
   { id: 'fastbike', name: 'Fastbike', value: 'fastbike' },
   { id: 'moped', name: 'Moped', value: 'moped' },
   { id: 'car-test', name: 'Car (test)', value: 'car-test' },
-  { id: 'vm-forum_liegerad_schnell', name: 'Liegerad (schnell)', value: 'vm-forum_liegerad_schnell' },
+  { id: 'vm-forum-liegerad-schnell', name: 'Liegerad (schnell)', value: 'vm-forum-liegerad-schnell' },
 ]
 
 export const loadProfiles = async () => ROUTING_PROFILES

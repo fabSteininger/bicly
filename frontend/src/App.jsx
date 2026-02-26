@@ -344,6 +344,15 @@ const parseGpxStats = (gpxText) => {
       .filter((point) => Number.isFinite(point.lon) && Number.isFinite(point.lat))
     if (trkpts.length < 2) return emptyRouteStats
 
+    const waypoints = Array.from(xml.querySelectorAll('wpt'))
+      .map((node) => ({
+        id: crypto.randomUUID(),
+        label: node.querySelector('name')?.textContent || 'Pin',
+        lon: Number(node.getAttribute('lon')),
+        lat: Number(node.getAttribute('lat')),
+      }))
+      .filter((p) => Number.isFinite(p.lon) && Number.isFinite(p.lat))
+
     let distanceMeters = 0
     let ascentM = 0
     let descentM = 0
@@ -362,6 +371,7 @@ const parseGpxStats = (gpxText) => {
       ascentM,
       descentM,
       rawSummary,
+      waypoints,
       elevationProfile: trkpts.reduce((acc, point, index) => {
         if (!Number.isFinite(point.ele)) return acc
         if (!index) return [{ distanceM: 0, elevationM: point.ele, slopeDeg: 0, lon: point.lon, lat: point.lat }]
@@ -376,6 +386,38 @@ const parseGpxStats = (gpxText) => {
     }
   } catch {
     return emptyRouteStats
+  }
+}
+
+const injectWaypointsToGpx = (gpx, waypoints) => {
+  if (!waypoints || waypoints.length === 0) return gpx
+  try {
+    const parser = new DOMParser()
+    const xmlDoc = parser.parseFromString(gpx, 'application/xml')
+    const gpxNode = xmlDoc.getElementsByTagName('gpx')[0]
+    if (!gpxNode) return gpx
+
+    const firstTrk = gpxNode.getElementsByTagName('trk')[0]
+
+    waypoints.forEach((wp) => {
+      const wpt = xmlDoc.createElement('wpt')
+      wpt.setAttribute('lat', wp.lat.toFixed(6))
+      wpt.setAttribute('lon', wp.lon.toFixed(6))
+      if (wp.label) {
+        const name = xmlDoc.createElement('name')
+        name.textContent = wp.label
+        wpt.appendChild(name)
+      }
+      if (firstTrk) {
+        gpxNode.insertBefore(wpt, firstTrk)
+      } else {
+        gpxNode.appendChild(wpt)
+      }
+    })
+
+    return new XMLSerializer().serializeToString(xmlDoc)
+  } catch {
+    return gpx
   }
 }
 
@@ -564,6 +606,13 @@ export default function App() {
   }, [activePage])
 
   useEffect(() => {
+    if (message) {
+      const timer = setTimeout(() => setMessage(''), 3000)
+      return () => clearTimeout(timer)
+    }
+  }, [message])
+
+  useEffect(() => {
     if (!map || hasInitialFit.current) return
     if (waypoints.length > 0) {
       const bounds = new maplibregl.LngLatBounds()
@@ -666,7 +715,8 @@ export default function App() {
 
   const saveGeneratedRoute = () => {
     if (!latestGpx) return
-    setSavedRoutes((prev) => [{ id: crypto.randomUUID(), title: title.trim() || 'Route', gpx: latestGpx }, ...prev])
+    const fullGpx = injectWaypointsToGpx(latestGpx, waypoints)
+    setSavedRoutes((prev) => [{ id: crypto.randomUUID(), title: title.trim() || 'Route', gpx: fullGpx }, ...prev])
     setMessage(t.statusSaved)
   }
 
@@ -681,7 +731,8 @@ export default function App() {
 
   const downloadCurrentRoute = () => {
     if (!latestGpx) return
-    const blob = new Blob([latestGpx], { type: 'application/gpx+xml' })
+    const fullGpx = injectWaypointsToGpx(latestGpx, waypoints)
+    const blob = new Blob([fullGpx], { type: 'application/gpx+xml' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
@@ -713,22 +764,25 @@ export default function App() {
     setLatestGpx(route.gpx)
     const geo = parseGpxToGeoJson(route.gpx)
     setRouteGeoJson(geo)
-    setRouteStats(parseGpxStats(route.gpx))
+    const stats = parseGpxStats(route.gpx)
+    setRouteStats(stats)
 
     const coords = geo.features[0]?.geometry?.coordinates ?? []
-    if (coords.length >= 2) {
+    if (stats.waypoints && stats.waypoints.length >= 2) {
+      setWaypoints(stats.waypoints)
+    } else if (coords.length >= 2) {
       const start = coords[0]
       const end = coords[coords.length - 1]
       setWaypoints([
         { id: crypto.randomUUID(), label: 'Start', lon: start[0], lat: start[1] },
         { id: crypto.randomUUID(), label: 'End', lon: end[0], lat: end[1] },
       ])
+    }
 
-      if (map) {
-        const bounds = new maplibregl.LngLatBounds()
-        coords.forEach((c) => bounds.extend(c))
-        map.fitBounds(bounds, { padding: 50, maxZoom: 15 })
-      }
+    if (map && coords.length >= 2) {
+      const bounds = new maplibregl.LngLatBounds()
+      coords.forEach((c) => bounds.extend(c))
+      map.fitBounds(bounds, { padding: 50, maxZoom: 15 })
     }
   }
 
@@ -815,7 +869,6 @@ export default function App() {
         {activePage === 'planner' && <section className="flex-1 flex min-h-0 relative">
         <section className="flex-1 flex flex-col min-w-0 relative">
           <section ref={mapRef} className="flex-1 min-h-0 relative" onClick={() => setPlannerPanelOpen(false)}>
-            <button type="button" className="md:hidden absolute top-20 right-4 z-[100] p-2 bg-white dark:bg-slate-800 rounded-full shadow-lg" aria-expanded={plannerPanelOpen} aria-label={plannerPanelOpen ? t.closePlanner : t.openRouteTools} onClick={(e) => { e.stopPropagation(); setPlannerPanelOpen((prev) => !prev) }}>{plannerPanelOpen ? <ArrowDownIcon /> : <ArrowUpIcon />}</button>
           </section>
           <section className={`flex flex-col overflow-hidden bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 transition-all duration-300 ${showRouteDetails ? 'max-h-[60%]' : 'max-h-12'}`}>
             <button
@@ -824,7 +877,6 @@ export default function App() {
               aria-expanded={showRouteDetails}
               aria-label={showRouteDetails ? t.closeRouteDetailsSheet : t.openRouteDetailsSheet}
               onClick={() => setShowRouteDetails((prev) => !prev)}
-              disabled={!latestGpx}
             >
               <span>{t.routeDetails}</span>
               <span className="w-5 h-5" aria-hidden="true">{showRouteDetails ? <ArrowDownIcon /> : <ArrowUpIcon />}</span>

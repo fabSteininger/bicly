@@ -1,11 +1,14 @@
 export const BROUTER_DIRECT_URL = import.meta.env.VITE_BROUTER_DIRECT_URL ?? 'https://brouter.de/brouter'
 
-export const fetchBrouterRoute = async ({ profile, points, signal }) => {
+export const fetchBrouterRoute = async ({ profile, points, signal, totalMass }) => {
   const params = new URLSearchParams()
   params.set('lonlats', points)
   params.set('alternativeidx', '0')
   params.set('format', 'gpx')
   params.set('profile', profile || 'trekking')
+  if (totalMass) {
+    params.set('totalmass', totalMass.toString())
+  }
 
   const res = await fetch(`${BROUTER_DIRECT_URL}?${params.toString()}`, { signal })
   if (!res.ok) {

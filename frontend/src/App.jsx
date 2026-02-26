@@ -89,7 +89,7 @@ const inputBase = "w-full p-2 rounded-xl border border-slate-200 dark:border-sla
 const labelBase = "block text-sm font-bold mb-1 text-slate-500 dark:text-slate-400 uppercase tracking-wider"
 
 const HamburgerIcon = () => (
-  <svg viewBox="0 0 122.88 95.95" aria-hidden="true" focusable="false">
+  <svg viewBox="0 0 122.88 95.95" aria-hidden="true" focusable="false" fill="currentColor">
     <path d="M8.94,0h105c4.92,0,8.94,4.02,8.94,8.94l0,0c0,4.92-4.02,8.94-8.94,8.94h-105C4.02,17.88,0,13.86,0,8.94l0,0 C0,4.02,4.02,0,8.94,0L8.94,0z M8.94,78.07h105c4.92,0,8.94,4.02,8.94,8.94l0,0c0,4.92-4.02,8.94-8.94,8.94h-105 C4.02,95.95,0,91.93,0,87.01l0,0C0,82.09,4.02,78.07,8.94,78.07L8.94,78.07z M8.94,39.03h105c4.92,0,8.94,4.02,8.94,8.94l0,0 c0,4.92-4.02,8.94-8.94,8.94h-105C4.02,56.91,0,52.89,0,47.97l0,0C0,43.06,4.02,39.03,8.94,39.03L8.94,39.03z" />
   </svg>
 )
@@ -149,6 +149,10 @@ const TEXT = {
     openRouteDetailsSheet: 'Open route details', closeRouteDetailsSheet: 'Close route details',
     routeDetailsUnavailable: 'Generate a route to see distance and elevation details.',
     elevationFocusHint: 'Hover (desktop) or drag (touch) to highlight the matching map position.',
+    travelTime: 'Travel time',
+    energy: 'Energy',
+    bears: 'Gummibärchen',
+    totalMass: 'Total weight (bike + rider)',
     profile_trekking: 'Bike',
     profile_trekking_noferries: 'Bike (no ferries)',
     profile_fastbike: 'Road bike',
@@ -182,6 +186,10 @@ const TEXT = {
     openRouteDetailsSheet: 'Routendetails öffnen', closeRouteDetailsSheet: 'Routendetails schließen',
     routeDetailsUnavailable: 'Erzeuge eine Route, um Distanz- und Höhendetails zu sehen.',
     elevationFocusHint: 'Fahre mit der Maus darüber (Desktop) oder ziehe mit dem Finger, um die Kartenposition zu markieren.',
+    travelTime: 'Fahrzeit',
+    energy: 'Energie',
+    bears: 'Gummibärchen',
+    totalMass: 'Gesamtgewicht (Rad + Fahrer)',
   },
 }
 
@@ -364,10 +372,37 @@ const parseGpxStats = (gpxText) => {
     }
 
     const rawSummary = xml.querySelector('metadata > desc')?.textContent?.trim() ?? ''
+
+    let travelTimeS = 0
+    const timeMatch = rawSummary.match(/Time:\s*([\d:]+)/i)
+    if (timeMatch) {
+      const parts = timeMatch[1].split(':').map(Number)
+      if (parts.length === 3) {
+        travelTimeS = parts[0] * 3600 + parts[1] * 60 + parts[2]
+      } else if (parts.length === 2) {
+        travelTimeS = parts[0] * 60 + parts[1]
+      }
+    }
+
+    let energyJoules = 0
+    const energyMatch = rawSummary.match(/Energy:\s*([\d.]+)\s*(Joule|kWh)/i)
+    if (energyMatch) {
+      const val = parseFloat(energyMatch[1])
+      const unit = energyMatch[2].toLowerCase()
+      if (unit === 'joule') {
+        energyJoules = val
+      } else if (unit === 'kwh') {
+        energyJoules = val * 3600000
+      }
+    }
+
     return {
       distanceKm: distanceMeters / 1000,
       ascentM,
       descentM,
+      travelTimeS,
+      energyJoules,
+      bears: Math.round(energyJoules / 33500),
       rawSummary,
       waypoints,
       elevationProfile: trkpts.reduce((acc, point, index) => {
@@ -470,6 +505,7 @@ const ensureRouteLayer = (map) => {
 export default function App() {
   const plannerDraft = useMemo(() => readPlannerDraft(), [])
   const [lang, setLang] = useState('de')
+  const [totalMass, setTotalMass] = useState(() => Number(localStorage.getItem('bicly_total_mass') ?? 90))
   const [isDarkMode, setIsDarkMode] = useState(() => localStorage.getItem('bicly_theme') === 'dark')
   const t = TEXT[lang]
   const mapRef = useRef(null)
@@ -483,6 +519,10 @@ export default function App() {
       localStorage.setItem('bicly_theme', 'light')
     }
   }, [isDarkMode])
+
+  useEffect(() => {
+    localStorage.setItem('bicly_total_mass', totalMass.toString())
+  }, [totalMass])
   const [map, setMap] = useState(null)
   const mapMarkers = useRef([])
   const [activePage, setActivePage] = useState('planner')
@@ -665,6 +705,7 @@ export default function App() {
       profile: activeProfile,
       points: brouterPoints,
       signal: controller.signal,
+      totalMass,
     })
       .then((text) => { setLatestGpx(text); setRouteGeoJson(parseGpxToGeoJson(text)); setRouteStats(parseGpxStats(text)) })
       .catch((err) => {
@@ -673,7 +714,7 @@ export default function App() {
         }
       })
     return () => controller.abort()
-  }, [activeProfile, brouterPoints, waypoints.length, isExternalRoute])
+  }, [activeProfile, brouterPoints, waypoints.length, isExternalRoute, totalMass])
 
 
   useEffect(() => {
@@ -771,9 +812,9 @@ export default function App() {
 
   return (
     <div className={`flex h-screen w-screen overflow-hidden relative bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 ${userMenuOpen ? 'menu-open' : ''}`}>
-      <aside className={`fixed inset-y-0 left-0 w-72 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 z-[300] flex flex-col transition-transform duration-300 transform ${userMenuOpen ? 'translate-x-0' : '-translate-x-full'} md:relative md:translate-x-0 ${userMenuOpen ? '' : 'md:ml-[-288px]'}`}>
-        <div className="flex justify-between items-center p-4 border-b border-slate-200 dark:border-slate-700">
-          <h3 className="text-lg font-bold">{t.appMenu}</h3>
+      <aside className={`fixed top-14 left-0 right-0 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 z-[90] flex flex-col transition-all duration-300 transform ${userMenuOpen ? 'translate-y-0 opacity-100' : '-translate-y-full opacity-0 pointer-events-none'}`}>
+        <div className="flex justify-between items-center p-4 border-b border-slate-200 dark:border-slate-700 md:hidden">
+          <h3 className="text-lg font-bold ml-6">{t.appMenu}</h3>
           <button type="button" className="text-2xl" onClick={() => setUserMenuOpen(false)}>✕</button>
         </div>
         <div className="flex flex-col gap-1 p-4">
@@ -796,7 +837,7 @@ export default function App() {
       </aside>
 
       <main className="flex-1 flex flex-col min-w-0 relative">
-        <header className="flex items-center justify-between gap-3 p-2 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 z-[100]">
+        <header className="flex items-center justify-between h-14 gap-3 p-2 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 z-[100]">
           <button type="button" className="flex items-center justify-center w-10 h-10 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors" aria-label={t.appMenu} onClick={() => setUserMenuOpen((prev) => !prev)}>
             <span className="w-6 h-6"><HamburgerIcon /></span>
           </button>
@@ -849,6 +890,21 @@ export default function App() {
                 <span className="bg-slate-100 dark:bg-slate-700 px-3 py-1 rounded-full"><strong>{t.distance}:</strong> {routeStats.distanceKm.toFixed(1)} km</span>
                 <span className="bg-slate-100 dark:bg-slate-700 px-3 py-1 rounded-full"><strong>{t.ascent}:</strong> {Math.round(routeStats.ascentM)} m</span>
                 <span className="bg-slate-100 dark:bg-slate-700 px-3 py-1 rounded-full"><strong>{t.descent}:</strong> {Math.round(routeStats.descentM)} m</span>
+                {routeStats.travelTimeS > 0 && (
+                  <span className="bg-slate-100 dark:bg-slate-700 px-3 py-1 rounded-full">
+                    <strong>{t.travelTime}:</strong> {Math.floor(routeStats.travelTimeS / 3600)}h {Math.floor((routeStats.travelTimeS % 3600) / 60)}m
+                  </span>
+                )}
+                {routeStats.energyJoules > 0 && (
+                  <>
+                    <span className="bg-slate-100 dark:bg-slate-700 px-3 py-1 rounded-full">
+                      <strong>{t.energy}:</strong> {(routeStats.energyJoules / 1000).toFixed(0)} kJ
+                    </span>
+                    <span className="bg-slate-100 dark:bg-slate-700 px-3 py-1 rounded-full">
+                      <strong>{t.bears}:</strong> {routeStats.bears} 🧸
+                    </span>
+                  </>
+                )}
               </div>
               {routeStats.rawSummary && <p className="text-sm text-slate-600 dark:text-slate-400 italic">{routeStats.rawSummary}</p>}
               <ElevationChart profile={routeStats.elevationProfile} title={t.elevationProfile} legend={t.steepLegend} hoverHint={t.elevationFocusHint} activeDistanceM={activeElevationPoint?.distanceM} onHoverPoint={setActiveElevationPoint} onLeave={() => setActiveElevationPoint(null)} t={t} isDarkMode={isDarkMode} />
@@ -959,6 +1015,10 @@ export default function App() {
               <option value="en">English</option>
               <option value="de">Deutsch</option>
             </select>
+          </div>
+          <div>
+            <label className={labelBase}>{t.totalMass} (kg)</label>
+            <input type="number" className={inputBase} value={totalMass} onChange={(e) => setTotalMass(Number(e.target.value))} />
           </div>
         </div>
       </section>}

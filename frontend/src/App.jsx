@@ -14,7 +14,7 @@ import {
 } from 'chart.js'
 import { Line } from 'react-chartjs-2'
 import WaypointList from './components/WaypointList'
-import { buildBrouterRouteUrl, loadProfiles, fetchBrouterRoute } from './lib/api'
+import { buildBrouterRouteUrl, loadProfiles, fetchBrouterRoute, uploadProfile } from './lib/api'
 
 const verticalLinePlugin = {
   id: 'verticalLine',
@@ -670,7 +670,7 @@ export default function App() {
   }, [map, activeElevationPoint])
 
   useEffect(() => {
-    if (waypoints.length < 2) { setLatestGpx(''); setRouteGeoJson(emptyRouteGeoJson); setRouteStats(emptyRouteStats); setShowRouteDetails(false); return }
+    if (waypoints.length < 2) { setLatestGpx(''); setRouteGeoJson(emptyRouteGeoJson); setRouteStats(emptyRouteStats); return }
     if (isExternalRoute) return
 
     const controller = new AbortController()
@@ -679,7 +679,9 @@ export default function App() {
     if (activeProfile === 'custom' && !customProfileContent) return
 
     const isCustomSaved = customProfiles.find((p) => p.id === activeProfile)
-    const finalProfile = isCustomSaved ? isCustomSaved.content : profileToUse
+    const finalProfile = isCustomSaved
+      ? (isCustomSaved.id.startsWith('custom_') ? isCustomSaved.id : isCustomSaved.content)
+      : profileToUse
 
     setRoutingError('')
     fetchBrouterRoute({ profile: finalProfile, points: brouterPoints, signal: controller.signal })
@@ -786,9 +788,16 @@ export default function App() {
     }
   }
 
-  const addCustomProfile = () => {
+  const addCustomProfile = async () => {
     if (!newProfileName || !newProfileContent) return
-    const id = crypto.randomUUID()
+    let id
+    try {
+      const data = await uploadProfile(newProfileContent)
+      id = data.profileid || crypto.randomUUID()
+    } catch (err) {
+      console.error('Failed to upload profile, saving locally:', err)
+      id = crypto.randomUUID()
+    }
     setCustomProfiles((prev) => [...prev, { id, name: newProfileName, content: newProfileContent }])
     setNewProfileName('')
     setNewProfileContent('')
@@ -870,10 +879,10 @@ export default function App() {
         <section className="flex-1 flex flex-col min-w-0 relative">
           <section ref={mapRef} className="flex-1 min-h-0 relative" onClick={() => setPlannerPanelOpen(false)}>
           </section>
-          <section className={`flex flex-col overflow-hidden bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 transition-all duration-300 ${showRouteDetails ? 'max-h-[60%]' : 'max-h-12'}`}>
+          <section className={`flex-none flex flex-col overflow-hidden bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 transition-all duration-300 z-[200] min-h-[3rem] ${showRouteDetails ? 'h-[60%]' : 'h-12'}`}>
             <button
               type="button"
-              className="flex justify-between items-center px-4 h-12 w-full font-bold hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors disabled:opacity-50"
+              className="flex-none flex justify-between items-center px-4 h-12 w-full font-bold hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors disabled:opacity-50"
               aria-expanded={showRouteDetails}
               aria-label={showRouteDetails ? t.closeRouteDetailsSheet : t.openRouteDetailsSheet}
               onClick={() => setShowRouteDetails((prev) => !prev)}
@@ -892,7 +901,7 @@ export default function App() {
               <ElevationChart profile={routeStats.elevationProfile} title={t.elevationProfile} legend={t.steepLegend} hoverHint={t.elevationFocusHint} activeDistanceM={activeElevationPoint?.distanceM} onHoverPoint={setActiveElevationPoint} onLeave={() => setActiveElevationPoint(null)} t={t} isDarkMode={isDarkMode} />
             </section>
           )}
-            {!latestGpx && <p className="p-4 text-sm text-slate-500 italic">{t.routeDetailsUnavailable}</p>}
+            {showRouteDetails && !latestGpx && <p className="p-4 text-sm text-slate-500 italic">{t.routeDetailsUnavailable}</p>}
           </section>
         </section>
         <aside className={`fixed inset-0 z-[400] bg-white dark:bg-slate-800 flex flex-col p-4 overflow-y-auto transition-transform duration-300 ${plannerPanelOpen ? 'translate-y-0' : 'translate-y-full'} md:static md:translate-y-0 md:w-96 md:border-l md:border-slate-200 md:dark:border-slate-700 ${plannerPanelOpen ? '' : 'md:mr-[-384px]'}`}>

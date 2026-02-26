@@ -1,5 +1,9 @@
 export const BROUTER_DIRECT_URL = import.meta.env.VITE_BROUTER_DIRECT_URL ?? 'https://brouter.de/brouter'
 
+const getBrouterBaseUrl = () => {
+  return BROUTER_DIRECT_URL.replace(/\/brouter\/?$/, '')
+}
+
 export const fetchBrouterRoute = async ({ profile, points, signal }) => {
   const isCustom = profile && (profile.includes('\n') || profile.includes('{'))
 
@@ -52,4 +56,26 @@ export const ROUTING_PROFILES = [
   { id: 'vm-forum-liegerad-schnell', name: 'Liegerad (schnell)', value: 'vm-forum-liegerad-schnell' },
 ]
 
-export const loadProfiles = async () => ROUTING_PROFILES
+export const uploadProfile = async (profileContent) => {
+  const res = await fetch(`${getBrouterBaseUrl()}/profiles`, {
+    method: 'POST',
+    body: profileContent,
+  })
+  if (!res.ok) {
+    const errorText = await res.text()
+    throw new Error(errorText || `Profile upload failed (${res.status})`)
+  }
+  return res.json()
+}
+
+export const loadProfiles = async () => {
+  try {
+    const res = await fetch(`${getBrouterBaseUrl()}/profiles`)
+    if (res.ok) {
+      return await res.json()
+    }
+  } catch (e) {
+    console.error('Failed to load profiles from server, using defaults', e)
+  }
+  return ROUTING_PROFILES
+}

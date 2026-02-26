@@ -1,4 +1,4 @@
-export const BROUTER_DIRECT_URL = import.meta.env.VITE_BROUTER_DIRECT_URL ?? 'https://brouter.de/brouter'
+export const BROUTER_DIRECT_URL = import.meta.env.VITE_BROUTER_DIRECT_URL ?? '/api/brouter'
 
 const getBrouterBaseUrl = () => {
   return BROUTER_DIRECT_URL.replace(/\/brouter\/?$/, '')
@@ -12,9 +12,9 @@ export const fetchBrouterRoute = async ({ profile, points, signal, engineMode, r
   params.set('alternativeidx', '0')
   params.set('format', 'gpx')
   if (engineMode) params.set('engineMode', engineMode)
-  if (roundTripDistance) params.set('roundTripDistance', roundTripDistance)
-  if (direction !== undefined && direction !== null) params.set('direction', direction)
-  if (roundTripPoints) params.set('roundTripPoints', roundTripPoints)
+  if (roundTripDistance) params.set('roundtripdistance', roundTripDistance)
+  if (direction !== undefined && direction !== null) params.set('roundtripdirection', direction)
+  if (roundTripPoints) params.set('roundtrippoints', roundTripPoints)
 
   if (isCustom) {
     // For custom profiles, we POST the profile content

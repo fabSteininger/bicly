@@ -515,7 +515,7 @@ export default function App() {
   const [showSubtitle, setShowSubtitle] = useState(false)
   const [userMenuOpen, setUserMenuOpen] = useState(false)
   const [headerExpanded, setHeaderExpanded] = useState(false)
-  const [showRouteDetails, setShowRouteDetails] = useState(true)
+  const [showRouteDetails, setShowRouteDetails] = useState(false)
   const [isRoundTrip, setIsRoundTrip] = useState(() => Boolean(plannerDraft?.isRoundTrip))
   const [roundTripDistance, setRoundTripDistance] = useState(() => plannerDraft?.roundTripDistance ?? 1500)
   const [roundTripDirection, setRoundTripDirection] = useState(() => plannerDraft?.roundTripDirection ?? -1)
@@ -582,7 +582,12 @@ export default function App() {
     })
     setIsExternalRoute(false)
   }
-  const brouterPoints = useMemo(() => waypoints.map((p) => `${p.lon},${p.lat}`).join('|'), [waypoints])
+  const brouterPoints = useMemo(() => {
+    if (isRoundTrip && waypoints.length > 0) {
+      return `${waypoints[0].lon},${waypoints[0].lat}`
+    }
+    return waypoints.map((p) => `${p.lon},${p.lat}`).join('|')
+  }, [waypoints, isRoundTrip])
 
   useEffect(() => {
     if (activePage !== 'planner' || !mapRef.current) return
@@ -898,9 +903,9 @@ export default function App() {
 
         {activePage === 'planner' && <section className="flex-1 flex min-h-0 relative">
         <section className="flex-1 flex flex-col min-w-0 relative">
-          <section ref={mapRef} className="flex-1 min-h-0 relative" onClick={() => setPlannerPanelOpen(false)}>
+          <section ref={mapRef} className="flex-1 min-h-0 relative" onClick={() => { if (window.innerWidth < 768) setPlannerPanelOpen(false) }}>
           </section>
-          <section className={`flex-none flex flex-col overflow-hidden bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 transition-all duration-300 z-[200] min-h-[3rem] ${showRouteDetails ? 'h-[60%]' : 'h-12'}`}>
+          <section className={`flex-none flex flex-col overflow-hidden bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 transition-all duration-300 z-[200] min-h-[3rem] ${showRouteDetails ? 'max-h-[60%] h-auto' : 'h-12'}`}>
             <button
               type="button"
               className="flex-none flex justify-between items-center px-4 h-12 w-full font-bold hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors disabled:opacity-50"

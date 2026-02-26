@@ -151,6 +151,8 @@ const TEXT = {
     expandChart: 'Expand chart', collapseChart: 'Collapse chart',
     distance: 'Distance', ascent: 'Ascent', descent: 'Descent',
     elevationProfile: 'Elevation profile', steepLegend: 'Steepness (10°+ = red)',
+    roundTrip: 'Round trip', roundTripDistance: 'Distance (m)', roundTripDirection: 'Direction (°)', roundTripPoints: 'Number of points',
+    uploadBrf: 'Upload .brf',
     openRouteDetailsSheet: 'Open route details', closeRouteDetailsSheet: 'Close route details',
     routeDetailsUnavailable: 'Generate a route to see distance and elevation details.',
     elevationFocusHint: 'Hover (desktop) or drag (touch) to highlight the matching map position.',
@@ -181,6 +183,8 @@ const TEXT = {
     expandChart: 'Profil vergrößern', collapseChart: 'Profil verkleinern',
     distance: 'Distanz', ascent: 'Anstieg', descent: 'Abstieg',
     elevationProfile: 'Höhenprofil', steepLegend: 'Steigung (ab 10° = rot)',
+    roundTrip: 'Rundtrip', roundTripDistance: 'Distanz (m)', roundTripDirection: 'Richtung (°)', roundTripPoints: 'Anzahl der Punkte',
+    uploadBrf: '.brf hochladen',
     openRouteDetailsSheet: 'Routendetails öffnen', closeRouteDetailsSheet: 'Routendetails schließen',
     routeDetailsUnavailable: 'Erzeuge eine Route, um Distanz- und Höhendetails zu sehen.',
     elevationFocusHint: 'Fahre mit der Maus darüber (Desktop) oder ziehe mit dem Finger, um die Kartenposition zu markieren.',
@@ -511,7 +515,11 @@ export default function App() {
   const [showSubtitle, setShowSubtitle] = useState(false)
   const [userMenuOpen, setUserMenuOpen] = useState(false)
   const [headerExpanded, setHeaderExpanded] = useState(false)
-  const [showRouteDetails, setShowRouteDetails] = useState(() => Boolean(plannerDraft?.latestGpx))
+  const [showRouteDetails, setShowRouteDetails] = useState(true)
+  const [isRoundTrip, setIsRoundTrip] = useState(() => Boolean(plannerDraft?.isRoundTrip))
+  const [roundTripDistance, setRoundTripDistance] = useState(() => plannerDraft?.roundTripDistance ?? 1500)
+  const [roundTripDirection, setRoundTripDirection] = useState(() => plannerDraft?.roundTripDirection ?? -1)
+  const [roundTripPoints, setRoundTripPoints] = useState(() => plannerDraft?.roundTripPoints ?? 5)
   const [routeStats, setRouteStats] = useState(() => plannerDraft?.routeStats?.elevationProfile ? plannerDraft.routeStats : emptyRouteStats)
   const [activeElevationPoint, setActiveElevationPoint] = useState(null)
   const [isExternalRoute, setIsExternalRoute] = useState(false)
@@ -542,6 +550,10 @@ export default function App() {
       title,
       routeStats,
       showRouteDetails,
+      isRoundTrip,
+      roundTripDistance,
+      roundTripDirection,
+      roundTripPoints,
     }))
     if (activeProfile === 'custom') {
       localStorage.setItem('bicly_custom_profile_tmp', customProfileContent)
@@ -670,7 +682,8 @@ export default function App() {
   }, [map, activeElevationPoint])
 
   useEffect(() => {
-    if (waypoints.length < 2) { setLatestGpx(''); setRouteGeoJson(emptyRouteGeoJson); setRouteStats(emptyRouteStats); return }
+    const minPoints = isRoundTrip ? 1 : 2
+    if (waypoints.length < minPoints) { setLatestGpx(''); setRouteGeoJson(emptyRouteGeoJson); setRouteStats(emptyRouteStats); return }
     if (isExternalRoute) return
 
     const controller = new AbortController()
@@ -684,7 +697,15 @@ export default function App() {
       : profileToUse
 
     setRoutingError('')
-    fetchBrouterRoute({ profile: finalProfile, points: brouterPoints, signal: controller.signal })
+    fetchBrouterRoute({
+      profile: finalProfile,
+      points: brouterPoints,
+      signal: controller.signal,
+      engineMode: isRoundTrip ? '4' : undefined,
+      roundTripDistance: isRoundTrip ? roundTripDistance : undefined,
+      direction: isRoundTrip ? roundTripDirection : undefined,
+      roundTripPoints: isRoundTrip ? roundTripPoints : undefined,
+    })
       .then((text) => { setLatestGpx(text); setRouteGeoJson(parseGpxToGeoJson(text)); setRouteStats(parseGpxStats(text)) })
       .catch((err) => {
         if (err.name !== 'AbortError') {
@@ -692,7 +713,7 @@ export default function App() {
         }
       })
     return () => controller.abort()
-  }, [activeProfile, customProfileContent, brouterPoints, waypoints.length, isExternalRoute])
+  }, [activeProfile, customProfileContent, brouterPoints, waypoints.length, isExternalRoute, isRoundTrip, roundTripDistance, roundTripDirection, roundTripPoints])
 
 
   useEffect(() => {
@@ -918,13 +939,49 @@ export default function App() {
               <option value="custom">{t.customProfile}</option>
             </select>
             {activeProfile === 'custom' && (
-              <textarea
-                className={`${inputBase} mt-2 font-mono text-xs`}
-                value={customProfileContent}
-                onChange={(e) => setCustomProfileContent(e.target.value)}
-                placeholder={t.customProfilePlaceholder}
-                rows={5}
-              />
+              <div className="flex flex-col gap-2 mt-2">
+                <textarea
+                  className={`${inputBase} font-mono text-xs`}
+                  value={customProfileContent}
+                  onChange={(e) => setCustomProfileContent(e.target.value)}
+                  placeholder={t.customProfilePlaceholder}
+                  rows={5}
+                />
+                <div className="flex items-center gap-2">
+                  <label className={`${btnSecondary} text-[10px] py-1 px-2 cursor-pointer flex-1 text-center`}>
+                    {t.uploadBrf}
+                    <input type="file" accept=".brf" className="hidden" onChange={async (e) => {
+                      const file = e.target.files?.[0]
+                      if (file) setCustomProfileContent(await file.text())
+                    }} />
+                  </label>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="flex flex-col gap-3 p-3 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-700">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" checked={isRoundTrip} onChange={(e) => setIsRoundTrip(e.target.checked)} />
+              <span className="font-bold text-sm uppercase tracking-wider text-slate-700 dark:text-slate-300">{t.roundTrip}</span>
+            </label>
+            {isRoundTrip && (
+              <div className="grid grid-cols-1 gap-3 mt-1">
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">{t.roundTripDistance}</label>
+                  <input type="number" className={inputBase} value={roundTripDistance} onChange={(e) => setRoundTripDistance(Number(e.target.value))} step="500" min="500" />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">{t.roundTripDirection}</label>
+                    <input type="number" className={inputBase} value={roundTripDirection} onChange={(e) => setRoundTripDirection(Number(e.target.value))} min="-1" max="360" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">{t.roundTripPoints}</label>
+                    <input type="number" className={inputBase} value={roundTripPoints} onChange={(e) => setRoundTripPoints(Number(e.target.value))} min="2" max="10" />
+                  </div>
+                </div>
+              </div>
             )}
           </div>
           <div>

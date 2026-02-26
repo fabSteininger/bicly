@@ -374,13 +374,18 @@ const parseGpxStats = (gpxText) => {
     const rawSummary = xml.querySelector('metadata > desc')?.textContent?.trim() ?? ''
 
     let travelTimeS = 0
-    const timeMatch = rawSummary.match(/Time:\s*([\d:]+)/i)
+    const timeMatch = rawSummary.match(/Time:\s*([\d:.]+)/i)
     if (timeMatch) {
-      const parts = timeMatch[1].split(':').map(Number)
-      if (parts.length === 3) {
-        travelTimeS = parts[0] * 3600 + parts[1] * 60 + parts[2]
-      } else if (parts.length === 2) {
-        travelTimeS = parts[0] * 60 + parts[1]
+      const timeStr = timeMatch[1]
+      if (timeStr.includes(':')) {
+        const parts = timeStr.split(':').map(Number)
+        if (parts.length === 3) {
+          travelTimeS = parts[0] * 3600 + parts[1] * 60 + parts[2]
+        } else if (parts.length === 2) {
+          travelTimeS = parts[0] * 60 + parts[1]
+        }
+      } else {
+        travelTimeS = parseFloat(timeStr)
       }
     }
 
@@ -813,10 +818,6 @@ export default function App() {
   return (
     <div className={`flex h-screen w-screen overflow-hidden relative bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 ${userMenuOpen ? 'menu-open' : ''}`}>
       <aside className={`fixed top-14 left-0 right-0 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 z-[90] flex flex-col transition-all duration-300 transform ${userMenuOpen ? 'translate-y-0 opacity-100' : '-translate-y-full opacity-0 pointer-events-none'}`}>
-        <div className="flex justify-between items-center p-4 border-b border-slate-200 dark:border-slate-700 md:hidden">
-          <h3 className="text-lg font-bold ml-6">{t.appMenu}</h3>
-          <button type="button" className="text-2xl" onClick={() => setUserMenuOpen(false)}>✕</button>
-        </div>
         <div className="flex flex-col gap-1 p-4">
           {[
             { id: 'planner', label: t.planner },

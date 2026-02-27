@@ -133,7 +133,6 @@ const TEXT = {
     saveGenerated: 'Save generated GPX', routeReady: 'Route generated and shown on map.',
     addPinsHint: 'Click on the map to add pins. Drag and reorder on the left.',
     useLocationStart: 'Use my location as start', addMyLocation: 'Add my location point',
-    centerOnMe: 'Center on my location',
     findPlace: 'Find place', placeSearchPlaceholder: 'Search city, street, or POI', noPlacesFound: 'No places found',
     searchingPlaces: 'Searching...', uploadSection: 'Upload route', uploadGpx: 'Upload GPX',
     uploadRouteTitle: 'Route title (optional)', uploadRouteButton: 'Save to local library',
@@ -173,7 +172,6 @@ const TEXT = {
     saveGenerated: 'Generierte GPX speichern', routeReady: 'Route erzeugt und auf der Karte angezeigt.',
     addPinsHint: 'Klicke auf die Karte, um Pins hinzuzufügen. Links kannst du sie sortieren.',
     useLocationStart: 'Meinen Standort als Start nutzen', addMyLocation: 'Meinen Standort als Punkt hinzufügen',
-    centerOnMe: 'Auf meinen Standort zentrieren',
     findPlace: 'Ort suchen', placeSearchPlaceholder: 'Stadt, Straße oder POI suchen', noPlacesFound: 'Keine Orte gefunden',
     searchingPlaces: 'Suche...', uploadSection: 'Route hochladen', uploadGpx: 'GPX hochladen',
     uploadRouteTitle: 'Routentitel (optional)', uploadRouteButton: 'Lokal speichern',
@@ -619,7 +617,6 @@ export default function App() {
   const showToiletsRef = useRef(showToilets)
   const mapRef = useRef(null)
   const mapMarkers = useRef([])
-  const userMarkerRef = useRef(null)
 
   const t = TEXT[lang]
 
@@ -653,26 +650,6 @@ export default function App() {
     localStorage.setItem('bicly_show_toilets', showToilets.toString())
   }, [showToilets])
 
-  useEffect(() => {
-    if (!map || !userLocation) return
-
-    if (!userMarkerRef.current) {
-      const el = document.createElement('div')
-      el.style.width = '18px'
-      el.style.height = '18px'
-      el.style.backgroundColor = '#3b82f6'
-      el.style.border = '3px solid white'
-      el.style.borderRadius = '50%'
-      el.style.boxShadow = '0 2px 4px rgba(0,0,0,0.3)'
-
-      userMarkerRef.current = new maplibregl.Marker({ element: el })
-        .setLngLat([userLocation.lon, userLocation.lat])
-        .addTo(map)
-    } else {
-      userMarkerRef.current.setLngLat([userLocation.lon, userLocation.lat])
-    }
-  }, [map, userLocation])
-
   useEffect(() => { localStorage.setItem(STORAGE_KEY, JSON.stringify(savedRoutes)) }, [savedRoutes])
   useEffect(() => {
     loadProfiles().then((rows) => {
@@ -696,15 +673,6 @@ export default function App() {
     }))
   }, [waypoints, activeProfile, latestGpx, routeGeoJson, title, routeStats, showRouteDetails])
 
-  useEffect(() => {
-    if (!navigator.geolocation) return
-    const watchId = navigator.geolocation.watchPosition(
-      (position) => setUserLocation({ lon: position.coords.longitude, lat: position.coords.latitude }),
-      () => {},
-      { enableHighAccuracy: true }
-    )
-    return () => navigator.geolocation.clearWatch(watchId)
-  }, [])
 
   const addWaypoint = (label, lon, lat) => {
     setIsExternalRoute(false)
@@ -734,6 +702,16 @@ export default function App() {
       zoom: 10,
     })
     m.addControl(new maplibregl.NavigationControl(), 'top-right')
+    const geolocate = new maplibregl.GeolocateControl({
+      positionOptions: { enableHighAccuracy: true },
+      trackUserLocation: true,
+      showUserLocation: true,
+    })
+    m.addControl(geolocate, 'top-right')
+    geolocate.on('geolocate', (e) => {
+      setUserLocation({ lon: e.coords.longitude, lat: e.coords.latitude })
+    })
+
     m.on('load', () => {
       ensureRouteLayer(m)
       ensurePoiLayers(m, showDrinkingWaterRef.current, showToiletsRef.current)
@@ -811,12 +789,6 @@ export default function App() {
     }, 0)
     return () => clearTimeout(timeout)
   }, [map, routeGeoJson])
-
-  const centerOnUser = () => {
-    if (map && userLocation) {
-      map.flyTo({ center: [userLocation.lon, userLocation.lat], zoom: 15 })
-    }
-  }
 
   useEffect(() => {
     if (!map || !map.isStyleLoaded()) return
@@ -1100,7 +1072,6 @@ export default function App() {
         <WaypointList waypoints={waypoints} setWaypoints={(val) => { setWaypoints(val); setIsExternalRoute(false); }} onMove={moveWaypoint} />
         {routingError && <div className="p-3 mb-4 text-xs font-mono bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 border border-red-100 dark:border-red-900/30 rounded-xl overflow-x-auto whitespace-pre-wrap">{routingError}</div>}
         <div className="flex flex-col gap-2 mt-auto">
-          <button className={btnSecondary} onClick={centerOnUser} disabled={!userLocation}>{t.centerOnMe}</button>
           <button className={btnSecondary} onClick={() => { if (userLocation) addWaypoint(t.addMyLocation, userLocation.lon, userLocation.lat); }} disabled={!userLocation}>{t.addMyLocation}</button>
           <button className={btnSecondary} onClick={() => { setWaypoints([]); setIsExternalRoute(false); }}>{t.clearPins}</button>
           <button className={btnPrimary} onClick={saveGeneratedRoute} disabled={!latestGpx}>{t.saveGenerated}</button>

@@ -25,13 +25,35 @@ npm install
 npm run dev -- --host 0.0.0.0 --port 5173
 ```
 
-## Deployment auf Vercel
+## Statisches Hosting
 
+Bicly ist eine reine **Single Page Application (SPA)**. Da alle API-Anfragen (Routing, Geocoding, Karten-Tiles) direkt vom Browser an externe CORS-fähige Dienste gesendet werden und die Datenspeicherung im `localStorage` erfolgt, kann die App auf jedem statischen Webserver gehostet werden.
+
+### Plattformen
+Die App kann problemlos auf folgenden Plattformen (und vielen weiteren) betrieben werden:
+- **GitHub Pages**
+- **Vercel**
+- **Netlify**
+- **S3 / Cloudfront**
+
+### Deployment (allgemein)
+1. In den Ordner `frontend` wechseln.
+2. `npm install` und `npm run build` ausführen.
+3. Den Inhalt des `dist`-Ordners auf den Webserver hochladen.
+
+### Deployment auf Vercel
 1. Repository in Vercel importieren.
 2. Root Directory auf `frontend` setzen.
 3. Build Command: `npm run build`
 4. Output Directory: `dist`
 
-Optionale Env-Variable:
+### BRouter Self-Hosting
+Die Standard-API unter `brouter.de` dient primär Testzwecken. Für den produktiven Einsatz wird dringend empfohlen, eine eigene BRouter-Instanz auf einem VPS oder dedizierten Server zu betreiben.
 
-- `VITE_BROUTER_DIRECT_URL` (Default: `https://brouter.de/brouter`)
+**Hardware-Anforderungen (für den Betrieb):**
+- **Speicherplatz:** ca. **50 GB** für die `.rd5` Routing-Daten der gesamten Welt.
+- **Arbeitsspeicher (RAM):** Mindestens **512 MB**.
+- **CPU:** Ein einzelner CPU-Kern ist ausreichend.
+
+### Umgebungsvariablen
+- `VITE_BROUTER_DIRECT_URL`: Hier sollte die URL der eigenen BRouter-Instanz eingetragen werden (z.B. `https://dein-server.de/brouter`). Default: `https://brouter.de/brouter`.

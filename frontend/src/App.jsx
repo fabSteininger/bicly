@@ -74,6 +74,8 @@ const ROUTE_SOURCE_ID = 'generated-route-source'
 const ROUTE_LAYER_ID = 'generated-route-layer'
 const ROUTE_HOVER_SOURCE_ID = 'generated-route-hover-source'
 const ROUTE_HOVER_LAYER_ID = 'generated-route-hover-layer'
+const WATER_LAYER_ID = 'poi-water-highlight'
+const TOILET_LAYER_ID = 'poi-toilet-highlight'
 const STORAGE_KEY = 'bicly_saved_routes'
 const PLANNER_DRAFT_KEY = 'bicly_planner_draft'
 
@@ -130,7 +132,7 @@ const TEXT = {
     language: 'Language', profile: 'Routing profile', title: 'Route title', clearPins: 'Clear pins',
     saveGenerated: 'Save generated GPX', routeReady: 'Route generated and shown on map.',
     addPinsHint: 'Click on the map to add pins. Drag and reorder on the left.',
-    useLocationStart: 'Use my location as start', addMyLocation: 'Add my location point',
+    useLocationStart: 'Use my location as start', addMyLocation: 'my location',
     findPlace: 'Find place', placeSearchPlaceholder: 'Search city, street, or POI', noPlacesFound: 'No places found',
     searchingPlaces: 'Searching...', uploadSection: 'Upload route', uploadGpx: 'Upload GPX',
     uploadRouteTitle: 'Route title (optional)', uploadRouteButton: 'Save to local library',
@@ -153,6 +155,8 @@ const TEXT = {
     energy: 'Energy',
     bears: 'Gummy bears',
     totalMass: 'Total weight (bike + rider)',
+    showDrinkingWater: 'Show drinking water',
+    showToilets: 'Show toilets',
     profile_trekking: 'Bike',
     profile_trekking_noferries: 'Bike (no ferries)',
     profile_fastbike: 'Road bike',
@@ -167,7 +171,7 @@ const TEXT = {
     language: 'Sprache', profile: 'Routing-Profil', title: 'Routentitel', clearPins: 'Pins löschen',
     saveGenerated: 'Generierte GPX speichern', routeReady: 'Route erzeugt und auf der Karte angezeigt.',
     addPinsHint: 'Klicke auf die Karte, um Pins hinzuzufügen. Links kannst du sie sortieren.',
-    useLocationStart: 'Meinen Standort als Start nutzen', addMyLocation: 'Meinen Standort als Punkt hinzufügen',
+    useLocationStart: 'Meinen Standort als Start nutzen', addMyLocation: 'mein Standort',
     findPlace: 'Ort suchen', placeSearchPlaceholder: 'Stadt, Straße oder POI suchen', noPlacesFound: 'Keine Orte gefunden',
     searchingPlaces: 'Suche...', uploadSection: 'Route hochladen', uploadGpx: 'GPX hochladen',
     uploadRouteTitle: 'Routentitel (optional)', uploadRouteButton: 'Lokal speichern',
@@ -190,6 +194,8 @@ const TEXT = {
     energy: 'Energie',
     bears: 'Gummibärchen',
     totalMass: 'Gesamtgewicht (Rad + Fahrer)',
+    showDrinkingWater: 'Trinkwasser anzeigen',
+    showToilets: 'Toiletten anzeigen',
   },
 }
 
@@ -533,13 +539,94 @@ const ensureRouteLayer = (map) => {
   }
 }
 
+const ensurePoiLayers = (map, showWater, showToilets) => {
+  if (!map.getSource('openmaptiles')) return
+
+  if (map.getLayer(WATER_LAYER_ID)) map.removeLayer(WATER_LAYER_ID)
+  if (map.getLayer(TOILET_LAYER_ID)) map.removeLayer(TOILET_LAYER_ID)
+
+  if (showWater) {
+    map.addLayer({
+      id: WATER_LAYER_ID,
+      type: 'circle',
+      source: 'openmaptiles',
+      'source-layer': 'poi',
+      minzoom: 13,
+      filter: ['any', ['==', ['get', 'class'], 'drinking_water'], ['==', ['get', 'subclass'], 'drinking_water']],
+      paint: {
+        'circle-radius': ['interpolate', ['linear'], ['zoom'], 13, 2, 16, 8],
+        'circle-color': '#3b82f6',
+        'circle-stroke-width': 2,
+        'circle-stroke-color': '#ffffff',
+      },
+    })
+  }
+
+  if (showToilets) {
+    map.addLayer({
+      id: TOILET_LAYER_ID,
+      type: 'circle',
+      source: 'openmaptiles',
+      'source-layer': 'poi',
+      minzoom: 13,
+      filter: ['any', ['==', ['get', 'class'], 'toilets'], ['==', ['get', 'subclass'], 'toilets']],
+      paint: {
+        'circle-radius': ['interpolate', ['linear'], ['zoom'], 13, 2, 16, 8],
+        'circle-color': '#78350f',
+        'circle-stroke-width': 2,
+        'circle-stroke-color': '#ffffff',
+      },
+    })
+  }
+}
+
 export default function App() {
   const plannerDraft = useMemo(() => readPlannerDraft(), [])
   const [lang, setLang] = useState('de')
   const [totalMass, setTotalMass] = useState(() => Number(localStorage.getItem('bicly_total_mass') ?? 90))
+  const [showDrinkingWater, setShowDrinkingWater] = useState(() => (localStorage.getItem('bicly_show_drinking_water') ?? 'true') === 'true')
+  const [showToilets, setShowToilets] = useState(() => (localStorage.getItem('bicly_show_toilets') ?? 'true') === 'true')
   const [isDarkMode, setIsDarkMode] = useState(() => localStorage.getItem('bicly_theme') === 'dark')
-  const t = TEXT[lang]
+  const [map, setMap] = useState(null)
+  const [userLocation, setUserLocation] = useState(null)
+  const [activePage, setActivePage] = useState('planner')
+  const [waypoints, setWaypoints] = useState(() => Array.isArray(plannerDraft?.waypoints) ? plannerDraft.waypoints : [])
+  const [profiles, setProfiles] = useState([])
+  const [activeProfile, setActiveProfile] = useState(() => typeof plannerDraft?.activeProfile === 'string' ? plannerDraft.activeProfile : 'trekking')
+  const [latestGpx, setLatestGpx] = useState(() => typeof plannerDraft?.latestGpx === 'string' ? plannerDraft.latestGpx : '')
+  const [routeGeoJson, setRouteGeoJson] = useState(() => plannerDraft?.routeGeoJson?.type === 'FeatureCollection' ? plannerDraft.routeGeoJson : emptyRouteGeoJson)
+  const [title, setTitle] = useState(() => typeof plannerDraft?.title === 'string' ? plannerDraft.title : 'New Route')
+  const [uploadTitle, setUploadTitle] = useState('')
+  const [uploadGpxFile, setUploadGpxFile] = useState(null)
+  const [savedRoutes, setSavedRoutes] = useState(() => JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '[]'))
+  const [message, setMessage] = useState('')
+  const [routingError, setRoutingError] = useState('')
+  const [placeQuery, setPlaceQuery] = useState('')
+  const [placeResults, setPlaceResults] = useState([])
+  const [searchingPlaces, setSearchingPlaces] = useState(false)
+  const [plannerPanelOpen, setPlannerPanelOpen] = useState(false)
+  const [showSubtitle, setShowSubtitle] = useState(false)
+  const [userMenuOpen, setUserMenuOpen] = useState(false)
+  const [showRouteDetails, setShowRouteDetails] = useState(true)
+  const [routeStats, setRouteStats] = useState(() => plannerDraft?.routeStats?.elevationProfile ? plannerDraft.routeStats : emptyRouteStats)
+  const [activeElevationPoint, setActiveElevationPoint] = useState(null)
+  const [isExternalRoute, setIsExternalRoute] = useState(false)
+  const hasInitialFit = useRef(false)
+
+  const showDrinkingWaterRef = useRef(showDrinkingWater)
+  const showToiletsRef = useRef(showToilets)
   const mapRef = useRef(null)
+  const mapMarkers = useRef([])
+
+  const t = TEXT[lang]
+
+  useEffect(() => {
+    showDrinkingWaterRef.current = showDrinkingWater
+  }, [showDrinkingWater])
+
+  useEffect(() => {
+    showToiletsRef.current = showToilets
+  }, [showToilets])
 
   useEffect(() => {
     if (isDarkMode) {
@@ -554,32 +641,14 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('bicly_total_mass', totalMass.toString())
   }, [totalMass])
-  const [map, setMap] = useState(null)
-  const mapMarkers = useRef([])
-  const [activePage, setActivePage] = useState('planner')
-  const [waypoints, setWaypoints] = useState(() => Array.isArray(plannerDraft?.waypoints) ? plannerDraft.waypoints : [])
-  const [profiles, setProfiles] = useState([])
-  const [activeProfile, setActiveProfile] = useState(() => typeof plannerDraft?.activeProfile === 'string' ? plannerDraft.activeProfile : 'trekking')
-  const [latestGpx, setLatestGpx] = useState(() => typeof plannerDraft?.latestGpx === 'string' ? plannerDraft.latestGpx : '')
-  const [routeGeoJson, setRouteGeoJson] = useState(() => plannerDraft?.routeGeoJson?.type === 'FeatureCollection' ? plannerDraft.routeGeoJson : emptyRouteGeoJson)
-  const [title, setTitle] = useState(() => typeof plannerDraft?.title === 'string' ? plannerDraft.title : 'New Route')
-  const [uploadTitle, setUploadTitle] = useState('')
-  const [uploadGpxFile, setUploadGpxFile] = useState(null)
-  const [savedRoutes, setSavedRoutes] = useState(() => JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '[]'))
-  const [message, setMessage] = useState('')
-  const [routingError, setRoutingError] = useState('')
-  const [userLocation, setUserLocation] = useState(null)
-  const [placeQuery, setPlaceQuery] = useState('')
-  const [placeResults, setPlaceResults] = useState([])
-  const [searchingPlaces, setSearchingPlaces] = useState(false)
-  const [plannerPanelOpen, setPlannerPanelOpen] = useState(false)
-  const [showSubtitle, setShowSubtitle] = useState(false)
-  const [userMenuOpen, setUserMenuOpen] = useState(false)
-  const [showRouteDetails, setShowRouteDetails] = useState(true)
-  const [routeStats, setRouteStats] = useState(() => plannerDraft?.routeStats?.elevationProfile ? plannerDraft.routeStats : emptyRouteStats)
-  const [activeElevationPoint, setActiveElevationPoint] = useState(null)
-  const [isExternalRoute, setIsExternalRoute] = useState(false)
-  const hasInitialFit = useRef(false)
+
+  useEffect(() => {
+    localStorage.setItem('bicly_show_drinking_water', showDrinkingWater.toString())
+  }, [showDrinkingWater])
+
+  useEffect(() => {
+    localStorage.setItem('bicly_show_toilets', showToilets.toString())
+  }, [showToilets])
 
   useEffect(() => { localStorage.setItem(STORAGE_KEY, JSON.stringify(savedRoutes)) }, [savedRoutes])
   useEffect(() => {
@@ -604,10 +673,6 @@ export default function App() {
     }))
   }, [waypoints, activeProfile, latestGpx, routeGeoJson, title, routeStats, showRouteDetails])
 
-  useEffect(() => {
-    if (!navigator.geolocation) return
-    navigator.geolocation.getCurrentPosition((position) => setUserLocation({ lon: position.coords.longitude, lat: position.coords.latitude }))
-  }, [])
 
   const addWaypoint = (label, lon, lat) => {
     setIsExternalRoute(false)
@@ -637,8 +702,19 @@ export default function App() {
       zoom: 10,
     })
     m.addControl(new maplibregl.NavigationControl(), 'top-right')
+    const geolocate = new maplibregl.GeolocateControl({
+      positionOptions: { enableHighAccuracy: true },
+      trackUserLocation: true,
+      showUserLocation: true,
+    })
+    m.addControl(geolocate, 'top-right')
+    geolocate.on('geolocate', (e) => {
+      setUserLocation({ lon: e.coords.longitude, lat: e.coords.latitude })
+    })
+
     m.on('load', () => {
       ensureRouteLayer(m)
+      ensurePoiLayers(m, showDrinkingWaterRef.current, showToiletsRef.current)
       if (waypoints.length > 0) {
         const bounds = new maplibregl.LngLatBounds()
         waypoints.forEach((p) => bounds.extend([p.lon, p.lat]))
@@ -648,6 +724,7 @@ export default function App() {
     })
     m.on('style.load', () => {
       ensureRouteLayer(m)
+      ensurePoiLayers(m, showDrinkingWaterRef.current, showToiletsRef.current)
       m.getSource(ROUTE_SOURCE_ID)?.setData(routeGeoJson)
     })
     m.on('click', (e) => addWaypoint('', e.lngLat.lng, e.lngLat.lat))
@@ -700,6 +777,11 @@ export default function App() {
 
   useEffect(() => {
     if (!map || !map.isStyleLoaded()) return
+    ensurePoiLayers(map, showDrinkingWater, showToilets)
+  }, [map, showDrinkingWater, showToilets])
+
+  useEffect(() => {
+    if (!map || !map.isStyleLoaded()) return
     ensureRouteLayer(map)
     // Small timeout to ensure source is ready if just added
     const timeout = setTimeout(() => {
@@ -707,11 +789,6 @@ export default function App() {
     }, 0)
     return () => clearTimeout(timeout)
   }, [map, routeGeoJson])
-
-  useEffect(() => {
-    if (!map || !userLocation || waypoints.length > 0) return
-    map.flyTo({ center: [userLocation.lon, userLocation.lat], zoom: 12 })
-  }, [map, userLocation, waypoints.length === 0])
 
   useEffect(() => {
     if (!map || !map.isStyleLoaded()) return
@@ -995,9 +1072,10 @@ export default function App() {
         <WaypointList waypoints={waypoints} setWaypoints={(val) => { setWaypoints(val); setIsExternalRoute(false); }} onMove={moveWaypoint} />
         {routingError && <div className="p-3 mb-4 text-xs font-mono bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 border border-red-100 dark:border-red-900/30 rounded-xl overflow-x-auto whitespace-pre-wrap">{routingError}</div>}
         <div className="flex flex-col gap-2 mt-auto">
+          <button className={btnSecondary} onClick={() => { if (userLocation) addWaypoint(t.addMyLocation, userLocation.lon, userLocation.lat); }} disabled={!userLocation}>{t.addMyLocation}</button>
           <button className={btnSecondary} onClick={() => { setWaypoints([]); setIsExternalRoute(false); }}>{t.clearPins}</button>
-          <button className={btnPrimary} onClick={saveGeneratedRoute} disabled={!latestGpx}>{t.saveGenerated}</button>
-          <button className={btnSecondary} onClick={downloadCurrentRoute} disabled={!latestGpx}>{t.downloadGpx}</button>
+          <button className={btnSecondary} onClick={saveGeneratedRoute} disabled={!latestGpx}>{t.saveGenerated}</button>
+          <button className={btnPrimary} onClick={downloadCurrentRoute} disabled={!latestGpx}>{t.downloadGpx}</button>
         </div>
         {latestGpx && <p className="status info inline">{t.routeReady}</p>}
       </aside></section>}
@@ -1056,6 +1134,16 @@ export default function App() {
           <div>
             <label className={labelBase}>{t.totalMass} (kg)</label>
             <input type="number" className={inputBase} value={totalMass} onChange={(e) => setTotalMass(Number(e.target.value))} />
+          </div>
+          <div className="flex flex-col gap-3">
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input type="checkbox" className="w-5 h-5 rounded border-slate-200 dark:border-slate-700" checked={showDrinkingWater} onChange={(e) => setShowDrinkingWater(e.target.checked)} />
+              <span className="font-bold">{t.showDrinkingWater}</span>
+            </label>
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input type="checkbox" className="w-5 h-5 rounded border-slate-200 dark:border-slate-700" checked={showToilets} onChange={(e) => setShowToilets(e.target.checked)} />
+              <span className="font-bold">{t.showToilets}</span>
+            </label>
           </div>
         </div>
       </section>}

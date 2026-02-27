@@ -25,13 +25,20 @@ npm install
 npm run dev -- --host 0.0.0.0 --port 5173
 ```
 
-## Deployment auf Vercel
+## Statisches Hosting
 
+Bicly ist eine reine **Single Page Application (SPA)**. Da alle API-Anfragen (Routing, Geocoding, Karten-Tiles) direkt vom Browser an externe CORS-fähige Dienste gesendet werden und die Datenspeicherung im `localStorage` erfolgt, kann die App auf jedem statischen Webserver gehostet werden (z. B. GitHub Pages, Netlify, Vercel, S3).
+
+### Deployment (allgemein)
+1. In den Ordner `frontend` wechseln.
+2. `npm install` und `npm run build` ausführen.
+3. Den Inhalt des `dist`-Ordners auf den Webserver hochladen.
+
+### Deployment auf Vercel
 1. Repository in Vercel importieren.
 2. Root Directory auf `frontend` setzen.
 3. Build Command: `npm run build`
 4. Output Directory: `dist`
 
-Optionale Env-Variable:
-
-- `VITE_BROUTER_DIRECT_URL` (Default: `https://brouter.de/brouter`)
+### Umgebungsvariablen
+- `VITE_BROUTER_DIRECT_URL` (Optional, Default: `https://brouter.de/brouter`)

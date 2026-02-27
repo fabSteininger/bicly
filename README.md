@@ -50,10 +50,10 @@ Die App kann problemlos auf folgenden Plattformen (und vielen weiteren) betriebe
 ### BRouter Self-Hosting
 Die Standard-API unter `brouter.de` dient primär Testzwecken. Für den produktiven Einsatz wird dringend empfohlen, eine eigene BRouter-Instanz auf einem VPS oder dedizierten Server zu betreiben.
 
-**Hardware-Anforderungen (Weltweite Routing-Daten):**
-- **Speicherplatz:** Mindestens **250 GB SSD** (für die `.rd5` Routing-Daten der gesamten Welt).
-- **Arbeitsspeicher (RAM):** Mindestens **8 GB**, empfohlen sind **16 GB** für einen flüssigen Betrieb.
-- **CPU:** Ein moderner Mehrkern-Prozessor beschleunigt die Generierung der Routing-Daten.
+**Hardware-Anforderungen (für den Betrieb):**
+- **Speicherplatz:** ca. **50 GB** für die `.rd5` Routing-Daten der gesamten Welt.
+- **Arbeitsspeicher (RAM):** Mindestens **512 MB**.
+- **CPU:** Ein einzelner CPU-Kern ist ausreichend.
 
 ### Umgebungsvariablen
 - `VITE_BROUTER_DIRECT_URL`: Hier sollte die URL der eigenen BRouter-Instanz eingetragen werden (z.B. `https://dein-server.de/brouter`). Default: `https://brouter.de/brouter`.

@@ -157,6 +157,9 @@ const TEXT = {
     profile_trekking_noferries: 'Bike (no ferries)',
     profile_fastbike: 'Road bike',
     profile_liegerad: 'Recumbent',
+    poiVisibility: 'POI Visibility',
+    drinkingWater: 'Drinking water',
+    toilets: 'Toilets',
   },
   de: {
     appTitle: 'Bicly', appSub: 'Fahrradfreundliche Routenplanung mit lokaler GPX-Bibliothek.', planner: 'Planer', library: 'Bibliothek',
@@ -190,6 +193,9 @@ const TEXT = {
     energy: 'Energie',
     bears: 'Gummibärchen',
     totalMass: 'Gesamtgewicht (Rad + Fahrer)',
+    poiVisibility: 'POI-Sichtbarkeit',
+    drinkingWater: 'Trinkwasser',
+    toilets: 'Toiletten',
   },
 }
 
@@ -531,6 +537,52 @@ const ensureRouteLayer = (map) => {
       },
     })
   }
+
+  if (!map.getLayer('drinking-water-highlight')) {
+    map.addLayer({
+      id: 'drinking-water-highlight',
+      type: 'circle',
+      source: 'openmaptiles',
+      'source-layer': 'poi',
+      filter: ['any',
+        ['in', ['get', 'subclass'], ['literal', ['drinking_water', 'water_point', 'fountain']]],
+        ['==', ['get', 'class'], 'drinking_water']
+      ],
+      paint: {
+        'circle-radius': ['interpolate', ['linear'], ['zoom'], 10, 4, 13, 10, 16, 18],
+        'circle-color': '#0ea5e9',
+        'circle-stroke-width': ['interpolate', ['linear'], ['zoom'], 10, 2, 14, 4],
+        'circle-stroke-color': '#ffffff',
+        'circle-opacity': 1,
+      },
+      layout: {
+        visibility: 'none'
+      }
+    })
+  }
+
+  if (!map.getLayer('toilets-highlight')) {
+    map.addLayer({
+      id: 'toilets-highlight',
+      type: 'circle',
+      source: 'openmaptiles',
+      'source-layer': 'poi',
+      filter: ['any',
+        ['in', ['get', 'subclass'], ['literal', ['toilet', 'toilets']]],
+        ['==', ['get', 'class'], 'toilet']
+      ],
+      paint: {
+        'circle-radius': ['interpolate', ['linear'], ['zoom'], 10, 4, 13, 10, 16, 18],
+        'circle-color': '#92400e',
+        'circle-stroke-width': ['interpolate', ['linear'], ['zoom'], 10, 2, 14, 4],
+        'circle-stroke-color': '#ffffff',
+        'circle-opacity': 1,
+      },
+      layout: {
+        visibility: 'none'
+      }
+    })
+  }
 }
 
 export default function App() {
@@ -538,6 +590,8 @@ export default function App() {
   const [lang, setLang] = useState('de')
   const [totalMass, setTotalMass] = useState(() => Number(localStorage.getItem('bicly_total_mass') ?? 90))
   const [isDarkMode, setIsDarkMode] = useState(() => localStorage.getItem('bicly_theme') === 'dark')
+  const [showDrinkingWater, setShowDrinkingWater] = useState(() => localStorage.getItem('bicly_show_drinking_water') === 'true')
+  const [showToilets, setShowToilets] = useState(() => localStorage.getItem('bicly_show_toilets') === 'true')
   const t = TEXT[lang]
   const mapRef = useRef(null)
 
@@ -554,6 +608,15 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('bicly_total_mass', totalMass.toString())
   }, [totalMass])
+
+  useEffect(() => {
+    localStorage.setItem('bicly_show_drinking_water', showDrinkingWater)
+  }, [showDrinkingWater])
+
+  useEffect(() => {
+    localStorage.setItem('bicly_show_toilets', showToilets)
+  }, [showToilets])
+
   const [map, setMap] = useState(null)
   const mapMarkers = useRef([])
   const [activePage, setActivePage] = useState('planner')
@@ -649,6 +712,7 @@ export default function App() {
     m.on('style.load', () => {
       ensureRouteLayer(m)
       m.getSource(ROUTE_SOURCE_ID)?.setData(routeGeoJson)
+      window.map = m
     })
     m.on('click', (e) => addWaypoint('', e.lngLat.lng, e.lngLat.lat))
 
@@ -724,6 +788,24 @@ export default function App() {
       : emptyRouteGeoJson
     map.getSource(ROUTE_HOVER_SOURCE_ID)?.setData(hoverFeature)
   }, [map, activeElevationPoint])
+
+  useEffect(() => {
+    if (!map) return
+    const updateVisibility = () => {
+      ensureRouteLayer(map)
+      if (map.getLayer('drinking-water-highlight')) {
+        map.setLayoutProperty('drinking-water-highlight', 'visibility', showDrinkingWater ? 'visible' : 'none')
+      }
+      if (map.getLayer('toilets-highlight')) {
+        map.setLayoutProperty('toilets-highlight', 'visibility', showToilets ? 'visible' : 'none')
+      }
+    }
+    if (map.isStyleLoaded()) {
+      updateVisibility()
+    } else {
+      map.once('style.load', updateVisibility)
+    }
+  }, [map, showDrinkingWater, showToilets])
 
   useEffect(() => {
     if (waypoints.length < 2) { setLatestGpx(''); setRouteGeoJson(emptyRouteGeoJson); setRouteStats(emptyRouteStats); return }
@@ -1056,6 +1138,30 @@ export default function App() {
           <div>
             <label className={labelBase}>{t.totalMass} (kg)</label>
             <input type="number" className={inputBase} value={totalMass} onChange={(e) => setTotalMass(Number(e.target.value))} />
+          </div>
+        </div>
+
+        <div className="p-6 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-3xl shadow-sm flex flex-col gap-4">
+          <h3 className="text-xl font-bold">{t.poiVisibility}</h3>
+          <div className="flex items-center gap-3">
+            <input
+              type="checkbox"
+              id="showDrinkingWater"
+              className="w-5 h-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+              checked={showDrinkingWater}
+              onChange={(e) => setShowDrinkingWater(e.target.checked)}
+            />
+            <label htmlFor="showDrinkingWater" className="font-medium text-slate-700 dark:text-slate-200">{t.drinkingWater}</label>
+          </div>
+          <div className="flex items-center gap-3">
+            <input
+              type="checkbox"
+              id="showToilets"
+              className="w-5 h-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+              checked={showToilets}
+              onChange={(e) => setShowToilets(e.target.checked)}
+            />
+            <label htmlFor="showToilets" className="font-medium text-slate-700 dark:text-slate-200">{t.toilets}</label>
           </div>
         </div>
       </section>}

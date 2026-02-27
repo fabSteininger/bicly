@@ -151,7 +151,7 @@ const TEXT = {
     elevationFocusHint: 'Hover (desktop) or drag (touch) to highlight the matching map position.',
     travelTime: 'Travel time',
     energy: 'Energy',
-    bears: 'Gummibärchen',
+    bears: 'Gummy bears',
     totalMass: 'Total weight (bike + rider)',
     profile_trekking: 'Bike',
     profile_trekking_noferries: 'Bike (no ferries)',
@@ -337,7 +337,33 @@ const haversineMeters = (a, b) => {
   return 2 * R * Math.asin(Math.sqrt(x))
 }
 
-const parseGpxStats = (gpxText) => {
+const parseDuration = (str) => {
+  if (!str) return 0
+  let seconds = 0
+  const cleanStr = str.replace(/[,;]/g, '').trim()
+
+  if (cleanStr.includes(':') && !cleanStr.match(/[hms]/i)) {
+    const parts = cleanStr.split(':').map(Number)
+    if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2]
+    if (parts.length === 2) return parts[0] * 60 + parts[1]
+  }
+
+  const hMatch = cleanStr.match(/([\d.]+)\s*h/i)
+  const mMatch = cleanStr.match(/([\d.]+)\s*m/i)
+  const sMatch = cleanStr.match(/([\d.]+)\s*s/i)
+
+  if (hMatch) seconds += parseFloat(hMatch[1]) * 3600
+  if (mMatch) seconds += parseFloat(mMatch[1]) * 60
+  if (sMatch) seconds += parseFloat(sMatch[1])
+
+  if (!hMatch && !mMatch && !sMatch) {
+    const val = parseFloat(cleanStr)
+    if (!isNaN(val)) seconds = val
+  }
+  return seconds
+}
+
+const parseGpxStats = (gpxText, totalMass = 90) => {
   if (!gpxText) return emptyRouteStats
   try {
     const xml = new DOMParser().parseFromString(gpxText, 'application/xml')
@@ -372,42 +398,42 @@ const parseGpxStats = (gpxText) => {
     }
 
     const rawSummary = xml.querySelector('metadata > desc')?.textContent?.trim() ?? ''
+    const combinedText = `${rawSummary} ${gpxText}`
 
     let travelTimeS = 0
-    const timeMatch = rawSummary.match(/Time:\s*([\d:.]+)/i)
+    const timeMatch = combinedText.match(/(?:Time:|time=)\s*(.+?)(?=\s*(?:Energy:|energy=)|$|\n|\r|<!--|-->|<[^>]+>)/i)
     if (timeMatch) {
-      const timeStr = timeMatch[1]
-      if (timeStr.includes(':')) {
-        const parts = timeStr.split(':').map(Number)
-        if (parts.length === 3) {
-          travelTimeS = parts[0] * 3600 + parts[1] * 60 + parts[2]
-        } else if (parts.length === 2) {
-          travelTimeS = parts[0] * 60 + parts[1]
-        }
-      } else {
-        travelTimeS = parseFloat(timeStr)
-      }
+      travelTimeS = parseDuration(timeMatch[1].trim())
     }
 
     let energyJoules = 0
-    const energyMatch = rawSummary.match(/Energy:\s*([\d.]+)\s*(Joule|kWh)/i)
+    const energyMatch = combinedText.match(/(?:Energy:|energy=)\s*([.\d]+)\s*(Joule|kWh|kJ)/i)
     if (energyMatch) {
       const val = parseFloat(energyMatch[1])
       const unit = energyMatch[2].toLowerCase()
-      if (unit === 'joule') {
-        energyJoules = val
-      } else if (unit === 'kwh') {
-        energyJoules = val * 3600000
+      if (unit === 'joule') energyJoules = val
+      else if (unit === 'kwh') energyJoules = val * 3600000
+      else if (unit === 'kj') energyJoules = val * 1000
+    } else {
+      const compactEnergyMatch = combinedText.match(/energy=([.\d]+)(kwh|kj|joule)/i)
+      if (compactEnergyMatch) {
+        const val = parseFloat(compactEnergyMatch[1])
+        const unit = compactEnergyMatch[2].toLowerCase()
+        if (unit === 'joule') energyJoules = val
+        else if (unit === 'kwh') energyJoules = val * 3600000
+        else if (unit === 'kj') energyJoules = val * 1000
       }
     }
+
+    const scaledEnergyJoules = energyJoules * (totalMass / 90)
 
     return {
       distanceKm: distanceMeters / 1000,
       ascentM,
       descentM,
       travelTimeS,
-      energyJoules,
-      bears: Math.round(energyJoules / 33500),
+      energyJoules: scaledEnergyJoules,
+      bears: Math.round(scaledEnergyJoules / 33500),
       rawSummary,
       waypoints,
       elevationProfile: trkpts.reduce((acc, point, index) => {
@@ -712,7 +738,11 @@ export default function App() {
       signal: controller.signal,
       totalMass,
     })
-      .then((text) => { setLatestGpx(text); setRouteGeoJson(parseGpxToGeoJson(text)); setRouteStats(parseGpxStats(text)) })
+      .then((text) => {
+        setLatestGpx(text)
+        setRouteGeoJson(parseGpxToGeoJson(text))
+        setRouteStats(parseGpxStats(text, totalMass))
+      })
       .catch((err) => {
         if (err.name !== 'AbortError') {
           setRoutingError(err.message)
@@ -725,6 +755,12 @@ export default function App() {
   useEffect(() => {
     if (activePage !== 'planner') setActiveElevationPoint(null)
   }, [activePage])
+
+  useEffect(() => {
+    if (latestGpx) {
+      setRouteStats(parseGpxStats(latestGpx, totalMass))
+    }
+  }, [totalMass, latestGpx])
 
   useEffect(() => {
     const query = placeQuery.trim()
@@ -793,7 +829,7 @@ export default function App() {
     setLatestGpx(route.gpx)
     const geo = parseGpxToGeoJson(route.gpx)
     setRouteGeoJson(geo)
-    const stats = parseGpxStats(route.gpx)
+    const stats = parseGpxStats(route.gpx, totalMass)
     setRouteStats(stats)
 
     const coords = geo.features[0]?.geometry?.coordinates ?? []
@@ -816,7 +852,7 @@ export default function App() {
   }
 
   return (
-    <div className={`flex h-screen w-screen overflow-hidden relative bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 ${userMenuOpen ? 'menu-open' : ''}`}>
+    <div className={`flex h-[100dvh] w-screen overflow-hidden relative bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 ${userMenuOpen ? 'menu-open' : ''}`}>
       <aside className={`fixed top-14 left-0 right-0 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 z-[90] flex flex-col transition-all duration-300 transform ${userMenuOpen ? 'translate-y-0 opacity-100' : '-translate-y-full opacity-0 pointer-events-none'}`}>
         <div className="flex flex-col gap-1 p-4">
           {[
@@ -874,10 +910,10 @@ export default function App() {
         <section className="flex-1 flex flex-col min-w-0 relative">
           <section ref={mapRef} className="flex-1 min-h-0 relative" onClick={() => setPlannerPanelOpen(false)}>
           </section>
-          <section className={`flex-none flex flex-col overflow-hidden bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 transition-all duration-300 z-[200] min-h-[3rem] ${showRouteDetails ? 'h-auto max-h-[60%]' : 'h-12'}`}>
+          <section className={`flex-none flex flex-col overflow-hidden bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 transition-all duration-300 z-[200] min-h-[3.5rem] ${showRouteDetails ? 'h-auto max-h-[60%]' : 'h-14'}`}>
             <button
               type="button"
-              className="flex-none flex justify-between items-center px-4 h-12 w-full font-bold hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors disabled:opacity-50"
+              className="flex-none flex justify-between items-center px-4 h-14 w-full font-bold hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors disabled:opacity-50"
               aria-expanded={showRouteDetails}
               aria-label={showRouteDetails ? t.closeRouteDetailsSheet : t.openRouteDetailsSheet}
               onClick={() => setShowRouteDetails((prev) => !prev)}
@@ -896,7 +932,7 @@ export default function App() {
                     <strong>{t.travelTime}:</strong> {Math.floor(routeStats.travelTimeS / 3600)}h {Math.floor((routeStats.travelTimeS % 3600) / 60)}m
                   </span>
                 )}
-                {routeStats.energyJoules > 0 && (
+                {routeStats.distanceKm > 0 && (
                   <>
                     <span className="bg-slate-100 dark:bg-slate-700 px-3 py-1 rounded-full">
                       <strong>{t.energy}:</strong> {(routeStats.energyJoules / 1000).toFixed(0)} kJ

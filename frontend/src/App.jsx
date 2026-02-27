@@ -625,6 +625,31 @@ export default function App() {
 
   const [map, setMap] = useState(null)
   const mapMarkers = useRef([])
+  const userMarkerRef = useRef(null)
+
+  useEffect(() => {
+    if (!map || !userLocation) return
+
+    if (!userMarkerRef.current) {
+      const el = document.createElement('div')
+      el.style.width = '18px'
+      el.style.height = '18px'
+      el.style.backgroundColor = '#3b82f6'
+      el.style.border = '3px solid white'
+      el.style.borderRadius = '50%'
+      el.style.boxShadow = '0 2px 4px rgba(0,0,0,0.3)'
+
+      userMarkerRef.current = new maplibregl.Marker({ element: el })
+        .setLngLat([userLocation.lon, userLocation.lat])
+        .addTo(map)
+    } else {
+      userMarkerRef.current.setLngLat([userLocation.lon, userLocation.lat])
+    }
+
+    return () => {
+      // We only remove on map cleanup/unmount
+    }
+  }, [map, userLocation])
   const [activePage, setActivePage] = useState('planner')
   const [waypoints, setWaypoints] = useState(() => Array.isArray(plannerDraft?.waypoints) ? plannerDraft.waypoints : [])
   const [profiles, setProfiles] = useState([])
@@ -675,7 +700,12 @@ export default function App() {
 
   useEffect(() => {
     if (!navigator.geolocation) return
-    navigator.geolocation.getCurrentPosition((position) => setUserLocation({ lon: position.coords.longitude, lat: position.coords.latitude }))
+    const watchId = navigator.geolocation.watchPosition(
+      (position) => setUserLocation({ lon: position.coords.longitude, lat: position.coords.latitude }),
+      () => {},
+      { enableHighAccuracy: true }
+    )
+    return () => navigator.geolocation.clearWatch(watchId)
   }, [])
 
   const addWaypoint = (label, lon, lat) => {
@@ -1071,6 +1101,7 @@ export default function App() {
         <WaypointList waypoints={waypoints} setWaypoints={(val) => { setWaypoints(val); setIsExternalRoute(false); }} onMove={moveWaypoint} />
         {routingError && <div className="p-3 mb-4 text-xs font-mono bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 border border-red-100 dark:border-red-900/30 rounded-xl overflow-x-auto whitespace-pre-wrap">{routingError}</div>}
         <div className="flex flex-col gap-2 mt-auto">
+          <button className={btnSecondary} onClick={() => { if (userLocation) addWaypoint(t.addMyLocation, userLocation.lon, userLocation.lat); }} disabled={!userLocation}>{t.addMyLocation}</button>
           <button className={btnSecondary} onClick={() => { setWaypoints([]); setIsExternalRoute(false); }}>{t.clearPins}</button>
           <button className={btnPrimary} onClick={saveGeneratedRoute} disabled={!latestGpx}>{t.saveGenerated}</button>
           <button className={btnSecondary} onClick={downloadCurrentRoute} disabled={!latestGpx}>{t.downloadGpx}</button>

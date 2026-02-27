@@ -79,44 +79,6 @@ const PLANNER_DRAFT_KEY = 'bicly_planner_draft'
 
 const emptyRouteGeoJson = { type: 'FeatureCollection', features: [] }
 
-const fetchPOIs = async (bounds, showWater, showToilets, signal) => {
-  const { _sw, _ne } = bounds
-  const bbox = `${_sw.lat},${_sw.lng},${_ne.lat},${_ne.lng}`
-
-  let query = '[out:json][timeout:25];('
-  if (showWater) query += `node["amenity"="drinking_water"](${bbox});`
-  if (showToilets) query += `node["amenity"="toilets"](${bbox});`
-  query += ');out body;>;out skel qt;'
-
-  const res = await fetch('https://overpass-api.de/api/interpreter', {
-    method: 'POST',
-    body: query,
-    signal,
-  })
-  if (!res.ok) throw new Error('Overpass request failed')
-  const data = await res.json()
-
-  const waterFeatures = []
-  const toiletFeatures = []
-
-  data.elements.forEach((el) => {
-    if (el.type === 'node') {
-      const feature = {
-        type: 'Feature',
-        geometry: { type: 'Point', coordinates: [el.lon, el.lat] },
-        properties: { id: el.id, ...el.tags },
-      }
-      if (el.tags.amenity === 'drinking_water') waterFeatures.push(feature)
-      else if (el.tags.amenity === 'toilet') toiletFeatures.push(feature)
-    }
-  })
-
-  return {
-    water: { type: 'FeatureCollection', features: waterFeatures },
-    toilets: { type: 'FeatureCollection', features: toiletFeatures },
-  }
-}
-
 const emptyRouteStats = { distanceKm: 0, ascentM: 0, descentM: 0, rawSummary: '', elevationProfile: [] }
 
 const btnBase = "px-4 py-2 rounded-xl transition-all active:scale-95 disabled:opacity-50 disabled:active:scale-100"
@@ -576,33 +538,41 @@ const ensureRouteLayer = (map) => {
     })
   }
 
-  if (!map.getSource('drinking-water-source')) map.addSource('drinking-water-source', { type: 'geojson', data: emptyRouteGeoJson })
-  if (!map.getLayer('drinking-water-layer')) {
+  if (!map.getLayer('drinking-water-highlight')) {
     map.addLayer({
-      id: 'drinking-water-layer',
+      id: 'drinking-water-highlight',
       type: 'circle',
-      source: 'drinking-water-source',
+      source: 'openmaptiles',
+      'source-layer': 'poi',
+      filter: ['in', ['get', 'subclass'], ['literal', ['drinking_water', 'water_point']]],
       paint: {
-        'circle-radius': 6,
+        'circle-radius': ['interpolate', ['linear'], ['zoom'], 12, 0, 14, 4, 16, 8],
         'circle-color': '#3b82f6',
         'circle-stroke-width': 2,
         'circle-stroke-color': '#ffffff',
       },
+      layout: {
+        visibility: 'none'
+      }
     })
   }
 
-  if (!map.getSource('toilets-source')) map.addSource('toilets-source', { type: 'geojson', data: emptyRouteGeoJson })
-  if (!map.getLayer('toilets-layer')) {
+  if (!map.getLayer('toilets-highlight')) {
     map.addLayer({
-      id: 'toilets-layer',
+      id: 'toilets-highlight',
       type: 'circle',
-      source: 'toilets-source',
+      source: 'openmaptiles',
+      'source-layer': 'poi',
+      filter: ['in', ['get', 'subclass'], ['literal', ['toilet', 'toilets']]],
       paint: {
-        'circle-radius': 6,
+        'circle-radius': ['interpolate', ['linear'], ['zoom'], 12, 0, 14, 4, 16, 8],
         'circle-color': '#78350f',
         'circle-stroke-width': 2,
         'circle-stroke-color': '#ffffff',
       },
+      layout: {
+        visibility: 'none'
+      }
     })
   }
 }
@@ -811,41 +781,10 @@ export default function App() {
   }, [map, activeElevationPoint])
 
   useEffect(() => {
-    if (!map || (!showDrinkingWater && !showToilets)) {
-      if (map && map.isStyleLoaded()) {
-        map.getSource('drinking-water-source')?.setData(emptyRouteGeoJson)
-        map.getSource('toilets-source')?.setData(emptyRouteGeoJson)
-      }
-      return
-    }
-
-    const controller = new AbortController()
-    const updatePOIs = async () => {
-      if (map.getZoom() < 14) {
-        ensureRouteLayer(map)
-        map.getSource('drinking-water-source')?.setData(emptyRouteGeoJson)
-        map.getSource('toilets-source')?.setData(emptyRouteGeoJson)
-        return
-      }
-      try {
-        const bounds = map.getBounds()
-        const pois = await fetchPOIs(bounds, showDrinkingWater, showToilets, controller.signal)
-        ensureRouteLayer(map)
-        map.getSource('drinking-water-source')?.setData(pois.water)
-        map.getSource('toilets-source')?.setData(pois.toilets)
-      } catch (err) {
-        if (err.name !== 'AbortError') {
-          console.error('Failed to fetch POIs:', err)
-        }
-      }
-    }
-
-    map.on('moveend', updatePOIs)
-    updatePOIs()
-    return () => {
-      controller.abort()
-      map.off('moveend', updatePOIs)
-    }
+    if (!map || !map.isStyleLoaded()) return
+    ensureRouteLayer(map)
+    map.setLayoutProperty('drinking-water-highlight', 'visibility', showDrinkingWater ? 'visible' : 'none')
+    map.setLayoutProperty('toilets-highlight', 'visibility', showToilets ? 'visible' : 'none')
   }, [map, showDrinkingWater, showToilets])
 
   useEffect(() => {

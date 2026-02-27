@@ -133,6 +133,7 @@ const TEXT = {
     saveGenerated: 'Save generated GPX', routeReady: 'Route generated and shown on map.',
     addPinsHint: 'Click on the map to add pins. Drag and reorder on the left.',
     useLocationStart: 'Use my location as start', addMyLocation: 'Add my location point',
+    centerOnMe: 'Center on my location',
     findPlace: 'Find place', placeSearchPlaceholder: 'Search city, street, or POI', noPlacesFound: 'No places found',
     searchingPlaces: 'Searching...', uploadSection: 'Upload route', uploadGpx: 'Upload GPX',
     uploadRouteTitle: 'Route title (optional)', uploadRouteButton: 'Save to local library',
@@ -172,6 +173,7 @@ const TEXT = {
     saveGenerated: 'Generierte GPX speichern', routeReady: 'Route erzeugt und auf der Karte angezeigt.',
     addPinsHint: 'Klicke auf die Karte, um Pins hinzuzufügen. Links kannst du sie sortieren.',
     useLocationStart: 'Meinen Standort als Start nutzen', addMyLocation: 'Meinen Standort als Punkt hinzufügen',
+    centerOnMe: 'Auf meinen Standort zentrieren',
     findPlace: 'Ort suchen', placeSearchPlaceholder: 'Stadt, Straße oder POI suchen', noPlacesFound: 'Keine Orte gefunden',
     searchingPlaces: 'Suche...', uploadSection: 'Route hochladen', uploadGpx: 'GPX hochladen',
     uploadRouteTitle: 'Routentitel (optional)', uploadRouteButton: 'Lokal speichern',
@@ -810,10 +812,11 @@ export default function App() {
     return () => clearTimeout(timeout)
   }, [map, routeGeoJson])
 
-  useEffect(() => {
-    if (!map || !userLocation || waypoints.length > 0) return
-    map.flyTo({ center: [userLocation.lon, userLocation.lat], zoom: 12 })
-  }, [map, userLocation, waypoints.length === 0])
+  const centerOnUser = () => {
+    if (map && userLocation) {
+      map.flyTo({ center: [userLocation.lon, userLocation.lat], zoom: 15 })
+    }
+  }
 
   useEffect(() => {
     if (!map || !map.isStyleLoaded()) return
@@ -1097,6 +1100,7 @@ export default function App() {
         <WaypointList waypoints={waypoints} setWaypoints={(val) => { setWaypoints(val); setIsExternalRoute(false); }} onMove={moveWaypoint} />
         {routingError && <div className="p-3 mb-4 text-xs font-mono bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 border border-red-100 dark:border-red-900/30 rounded-xl overflow-x-auto whitespace-pre-wrap">{routingError}</div>}
         <div className="flex flex-col gap-2 mt-auto">
+          <button className={btnSecondary} onClick={centerOnUser} disabled={!userLocation}>{t.centerOnMe}</button>
           <button className={btnSecondary} onClick={() => { if (userLocation) addWaypoint(t.addMyLocation, userLocation.lon, userLocation.lat); }} disabled={!userLocation}>{t.addMyLocation}</button>
           <button className={btnSecondary} onClick={() => { setWaypoints([]); setIsExternalRoute(false); }}>{t.clearPins}</button>
           <button className={btnPrimary} onClick={saveGeneratedRoute} disabled={!latestGpx}>{t.saveGenerated}</button>

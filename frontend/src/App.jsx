@@ -363,7 +363,7 @@ const parseDuration = (str) => {
   return seconds
 }
 
-const parseGpxStats = (gpxText) => {
+const parseGpxStats = (gpxText, totalMass = 90) => {
   if (!gpxText) return emptyRouteStats
   try {
     const xml = new DOMParser().parseFromString(gpxText, 'application/xml')
@@ -425,13 +425,15 @@ const parseGpxStats = (gpxText) => {
       }
     }
 
+    const scaledEnergyJoules = energyJoules * (totalMass / 90)
+
     return {
       distanceKm: distanceMeters / 1000,
       ascentM,
       descentM,
       travelTimeS,
-      energyJoules,
-      bears: Math.round(energyJoules / 33500),
+      energyJoules: scaledEnergyJoules,
+      bears: Math.round(scaledEnergyJoules / 33500),
       rawSummary,
       waypoints,
       elevationProfile: trkpts.reduce((acc, point, index) => {
@@ -736,7 +738,11 @@ export default function App() {
       signal: controller.signal,
       totalMass,
     })
-      .then((text) => { setLatestGpx(text); setRouteGeoJson(parseGpxToGeoJson(text)); setRouteStats(parseGpxStats(text)) })
+      .then((text) => {
+        setLatestGpx(text)
+        setRouteGeoJson(parseGpxToGeoJson(text))
+        setRouteStats(parseGpxStats(text, totalMass))
+      })
       .catch((err) => {
         if (err.name !== 'AbortError') {
           setRoutingError(err.message)
@@ -749,6 +755,12 @@ export default function App() {
   useEffect(() => {
     if (activePage !== 'planner') setActiveElevationPoint(null)
   }, [activePage])
+
+  useEffect(() => {
+    if (latestGpx) {
+      setRouteStats(parseGpxStats(latestGpx, totalMass))
+    }
+  }, [totalMass, latestGpx])
 
   useEffect(() => {
     const query = placeQuery.trim()
@@ -817,7 +829,7 @@ export default function App() {
     setLatestGpx(route.gpx)
     const geo = parseGpxToGeoJson(route.gpx)
     setRouteGeoJson(geo)
-    const stats = parseGpxStats(route.gpx)
+    const stats = parseGpxStats(route.gpx, totalMass)
     setRouteStats(stats)
 
     const coords = geo.features[0]?.geometry?.coordinates ?? []
@@ -920,7 +932,7 @@ export default function App() {
                     <strong>{t.travelTime}:</strong> {Math.floor(routeStats.travelTimeS / 3600)}h {Math.floor((routeStats.travelTimeS % 3600) / 60)}m
                   </span>
                 )}
-                {routeStats.energyJoules > 0 && (
+                {routeStats.distanceKm > 0 && (
                   <>
                     <span className="bg-slate-100 dark:bg-slate-700 px-3 py-1 rounded-full">
                       <strong>{t.energy}:</strong> {(routeStats.energyJoules / 1000).toFixed(0)} kJ

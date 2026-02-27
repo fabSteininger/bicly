@@ -27,7 +27,14 @@ npm run dev -- --host 0.0.0.0 --port 5173
 
 ## Statisches Hosting
 
-Bicly ist eine reine **Single Page Application (SPA)**. Da alle API-Anfragen (Routing, Geocoding, Karten-Tiles) direkt vom Browser an externe CORS-fähige Dienste gesendet werden und die Datenspeicherung im `localStorage` erfolgt, kann die App auf jedem statischen Webserver gehostet werden (z. B. GitHub Pages, Netlify, Vercel, S3).
+Bicly ist eine reine **Single Page Application (SPA)**. Da alle API-Anfragen (Routing, Geocoding, Karten-Tiles) direkt vom Browser an externe CORS-fähige Dienste gesendet werden und die Datenspeicherung im `localStorage` erfolgt, kann die App auf jedem statischen Webserver gehostet werden.
+
+### Plattformen
+Die App kann problemlos auf folgenden Plattformen (und vielen weiteren) betrieben werden:
+- **GitHub Pages**
+- **Vercel**
+- **Netlify**
+- **S3 / Cloudfront**
 
 ### Deployment (allgemein)
 1. In den Ordner `frontend` wechseln.
@@ -40,5 +47,13 @@ Bicly ist eine reine **Single Page Application (SPA)**. Da alle API-Anfragen (Ro
 3. Build Command: `npm run build`
 4. Output Directory: `dist`
 
+### BRouter Self-Hosting
+Die Standard-API unter `brouter.de` dient primär Testzwecken. Für den produktiven Einsatz wird dringend empfohlen, eine eigene BRouter-Instanz auf einem VPS oder dedizierten Server zu betreiben.
+
+**Hardware-Anforderungen (Weltweite Routing-Daten):**
+- **Speicherplatz:** Mindestens **250 GB SSD** (für die `.rd5` Routing-Daten der gesamten Welt).
+- **Arbeitsspeicher (RAM):** Mindestens **8 GB**, empfohlen sind **16 GB** für einen flüssigen Betrieb.
+- **CPU:** Ein moderner Mehrkern-Prozessor beschleunigt die Generierung der Routing-Daten.
+
 ### Umgebungsvariablen
-- `VITE_BROUTER_DIRECT_URL` (Optional, Default: `https://brouter.de/brouter`)
+- `VITE_BROUTER_DIRECT_URL`: Hier sollte die URL der eigenen BRouter-Instanz eingetragen werden (z.B. `https://dein-server.de/brouter`). Default: `https://brouter.de/brouter`.

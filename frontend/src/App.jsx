@@ -586,8 +586,40 @@ export default function App() {
   const [totalMass, setTotalMass] = useState(() => Number(localStorage.getItem('bicly_total_mass') ?? 90))
   const [showDrinkingWater, setShowDrinkingWater] = useState(() => (localStorage.getItem('bicly_show_drinking_water') ?? 'true') === 'true')
   const [showToilets, setShowToilets] = useState(() => (localStorage.getItem('bicly_show_toilets') ?? 'true') === 'true')
+  const [isDarkMode, setIsDarkMode] = useState(() => localStorage.getItem('bicly_theme') === 'dark')
+  const [map, setMap] = useState(null)
+  const [userLocation, setUserLocation] = useState(null)
+  const [activePage, setActivePage] = useState('planner')
+  const [waypoints, setWaypoints] = useState(() => Array.isArray(plannerDraft?.waypoints) ? plannerDraft.waypoints : [])
+  const [profiles, setProfiles] = useState([])
+  const [activeProfile, setActiveProfile] = useState(() => typeof plannerDraft?.activeProfile === 'string' ? plannerDraft.activeProfile : 'trekking')
+  const [latestGpx, setLatestGpx] = useState(() => typeof plannerDraft?.latestGpx === 'string' ? plannerDraft.latestGpx : '')
+  const [routeGeoJson, setRouteGeoJson] = useState(() => plannerDraft?.routeGeoJson?.type === 'FeatureCollection' ? plannerDraft.routeGeoJson : emptyRouteGeoJson)
+  const [title, setTitle] = useState(() => typeof plannerDraft?.title === 'string' ? plannerDraft.title : 'New Route')
+  const [uploadTitle, setUploadTitle] = useState('')
+  const [uploadGpxFile, setUploadGpxFile] = useState(null)
+  const [savedRoutes, setSavedRoutes] = useState(() => JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '[]'))
+  const [message, setMessage] = useState('')
+  const [routingError, setRoutingError] = useState('')
+  const [placeQuery, setPlaceQuery] = useState('')
+  const [placeResults, setPlaceResults] = useState([])
+  const [searchingPlaces, setSearchingPlaces] = useState(false)
+  const [plannerPanelOpen, setPlannerPanelOpen] = useState(false)
+  const [showSubtitle, setShowSubtitle] = useState(false)
+  const [userMenuOpen, setUserMenuOpen] = useState(false)
+  const [showRouteDetails, setShowRouteDetails] = useState(true)
+  const [routeStats, setRouteStats] = useState(() => plannerDraft?.routeStats?.elevationProfile ? plannerDraft.routeStats : emptyRouteStats)
+  const [activeElevationPoint, setActiveElevationPoint] = useState(null)
+  const [isExternalRoute, setIsExternalRoute] = useState(false)
+  const hasInitialFit = useRef(false)
+
   const showDrinkingWaterRef = useRef(showDrinkingWater)
   const showToiletsRef = useRef(showToilets)
+  const mapRef = useRef(null)
+  const mapMarkers = useRef([])
+  const userMarkerRef = useRef(null)
+
+  const t = TEXT[lang]
 
   useEffect(() => {
     showDrinkingWaterRef.current = showDrinkingWater
@@ -596,10 +628,6 @@ export default function App() {
   useEffect(() => {
     showToiletsRef.current = showToilets
   }, [showToilets])
-
-  const [isDarkMode, setIsDarkMode] = useState(() => localStorage.getItem('bicly_theme') === 'dark')
-  const t = TEXT[lang]
-  const mapRef = useRef(null)
 
   useEffect(() => {
     if (isDarkMode) {
@@ -623,10 +651,6 @@ export default function App() {
     localStorage.setItem('bicly_show_toilets', showToilets.toString())
   }, [showToilets])
 
-  const [map, setMap] = useState(null)
-  const mapMarkers = useRef([])
-  const userMarkerRef = useRef(null)
-
   useEffect(() => {
     if (!map || !userLocation) return
 
@@ -645,35 +669,7 @@ export default function App() {
     } else {
       userMarkerRef.current.setLngLat([userLocation.lon, userLocation.lat])
     }
-
-    return () => {
-      // We only remove on map cleanup/unmount
-    }
   }, [map, userLocation])
-  const [activePage, setActivePage] = useState('planner')
-  const [waypoints, setWaypoints] = useState(() => Array.isArray(plannerDraft?.waypoints) ? plannerDraft.waypoints : [])
-  const [profiles, setProfiles] = useState([])
-  const [activeProfile, setActiveProfile] = useState(() => typeof plannerDraft?.activeProfile === 'string' ? plannerDraft.activeProfile : 'trekking')
-  const [latestGpx, setLatestGpx] = useState(() => typeof plannerDraft?.latestGpx === 'string' ? plannerDraft.latestGpx : '')
-  const [routeGeoJson, setRouteGeoJson] = useState(() => plannerDraft?.routeGeoJson?.type === 'FeatureCollection' ? plannerDraft.routeGeoJson : emptyRouteGeoJson)
-  const [title, setTitle] = useState(() => typeof plannerDraft?.title === 'string' ? plannerDraft.title : 'New Route')
-  const [uploadTitle, setUploadTitle] = useState('')
-  const [uploadGpxFile, setUploadGpxFile] = useState(null)
-  const [savedRoutes, setSavedRoutes] = useState(() => JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '[]'))
-  const [message, setMessage] = useState('')
-  const [routingError, setRoutingError] = useState('')
-  const [userLocation, setUserLocation] = useState(null)
-  const [placeQuery, setPlaceQuery] = useState('')
-  const [placeResults, setPlaceResults] = useState([])
-  const [searchingPlaces, setSearchingPlaces] = useState(false)
-  const [plannerPanelOpen, setPlannerPanelOpen] = useState(false)
-  const [showSubtitle, setShowSubtitle] = useState(false)
-  const [userMenuOpen, setUserMenuOpen] = useState(false)
-  const [showRouteDetails, setShowRouteDetails] = useState(true)
-  const [routeStats, setRouteStats] = useState(() => plannerDraft?.routeStats?.elevationProfile ? plannerDraft.routeStats : emptyRouteStats)
-  const [activeElevationPoint, setActiveElevationPoint] = useState(null)
-  const [isExternalRoute, setIsExternalRoute] = useState(false)
-  const hasInitialFit = useRef(false)
 
   useEffect(() => { localStorage.setItem(STORAGE_KEY, JSON.stringify(savedRoutes)) }, [savedRoutes])
   useEffect(() => {

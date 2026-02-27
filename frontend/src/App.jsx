@@ -74,6 +74,8 @@ const ROUTE_SOURCE_ID = 'generated-route-source'
 const ROUTE_LAYER_ID = 'generated-route-layer'
 const ROUTE_HOVER_SOURCE_ID = 'generated-route-hover-source'
 const ROUTE_HOVER_LAYER_ID = 'generated-route-hover-layer'
+const WATER_LAYER_ID = 'poi-water-highlight'
+const TOILET_LAYER_ID = 'poi-toilet-highlight'
 const STORAGE_KEY = 'bicly_saved_routes'
 const PLANNER_DRAFT_KEY = 'bicly_planner_draft'
 
@@ -153,6 +155,8 @@ const TEXT = {
     energy: 'Energy',
     bears: 'Gummy bears',
     totalMass: 'Total weight (bike + rider)',
+    showDrinkingWater: 'Show drinking water',
+    showToilets: 'Show toilets',
     profile_trekking: 'Bike',
     profile_trekking_noferries: 'Bike (no ferries)',
     profile_fastbike: 'Road bike',
@@ -190,6 +194,8 @@ const TEXT = {
     energy: 'Energie',
     bears: 'Gummibärchen',
     totalMass: 'Gesamtgewicht (Rad + Fahrer)',
+    showDrinkingWater: 'Trinkwasser anzeigen',
+    showToilets: 'Toiletten anzeigen',
   },
 }
 
@@ -533,10 +539,64 @@ const ensureRouteLayer = (map) => {
   }
 }
 
+const ensurePoiLayers = (map, showWater, showToilets) => {
+  if (!map.getSource('openmaptiles')) return
+
+  if (map.getLayer(WATER_LAYER_ID)) map.removeLayer(WATER_LAYER_ID)
+  if (map.getLayer(TOILET_LAYER_ID)) map.removeLayer(TOILET_LAYER_ID)
+
+  if (showWater) {
+    map.addLayer({
+      id: WATER_LAYER_ID,
+      type: 'circle',
+      source: 'openmaptiles',
+      'source-layer': 'poi',
+      minzoom: 13,
+      filter: ['any', ['==', ['get', 'class'], 'drinking_water'], ['==', ['get', 'subclass'], 'drinking_water']],
+      paint: {
+        'circle-radius': ['interpolate', ['linear'], ['zoom'], 13, 2, 16, 8],
+        'circle-color': '#3b82f6',
+        'circle-stroke-width': 2,
+        'circle-stroke-color': '#ffffff',
+      },
+    })
+  }
+
+  if (showToilets) {
+    map.addLayer({
+      id: TOILET_LAYER_ID,
+      type: 'circle',
+      source: 'openmaptiles',
+      'source-layer': 'poi',
+      minzoom: 13,
+      filter: ['any', ['==', ['get', 'class'], 'toilets'], ['==', ['get', 'subclass'], 'toilets']],
+      paint: {
+        'circle-radius': ['interpolate', ['linear'], ['zoom'], 13, 2, 16, 8],
+        'circle-color': '#78350f',
+        'circle-stroke-width': 2,
+        'circle-stroke-color': '#ffffff',
+      },
+    })
+  }
+}
+
 export default function App() {
   const plannerDraft = useMemo(() => readPlannerDraft(), [])
   const [lang, setLang] = useState('de')
   const [totalMass, setTotalMass] = useState(() => Number(localStorage.getItem('bicly_total_mass') ?? 90))
+  const [showDrinkingWater, setShowDrinkingWater] = useState(() => (localStorage.getItem('bicly_show_drinking_water') ?? 'true') === 'true')
+  const [showToilets, setShowToilets] = useState(() => (localStorage.getItem('bicly_show_toilets') ?? 'true') === 'true')
+  const showDrinkingWaterRef = useRef(showDrinkingWater)
+  const showToiletsRef = useRef(showToilets)
+
+  useEffect(() => {
+    showDrinkingWaterRef.current = showDrinkingWater
+  }, [showDrinkingWater])
+
+  useEffect(() => {
+    showToiletsRef.current = showToilets
+  }, [showToilets])
+
   const [isDarkMode, setIsDarkMode] = useState(() => localStorage.getItem('bicly_theme') === 'dark')
   const t = TEXT[lang]
   const mapRef = useRef(null)
@@ -554,6 +614,15 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('bicly_total_mass', totalMass.toString())
   }, [totalMass])
+
+  useEffect(() => {
+    localStorage.setItem('bicly_show_drinking_water', showDrinkingWater.toString())
+  }, [showDrinkingWater])
+
+  useEffect(() => {
+    localStorage.setItem('bicly_show_toilets', showToilets.toString())
+  }, [showToilets])
+
   const [map, setMap] = useState(null)
   const mapMarkers = useRef([])
   const [activePage, setActivePage] = useState('planner')
@@ -639,6 +708,7 @@ export default function App() {
     m.addControl(new maplibregl.NavigationControl(), 'top-right')
     m.on('load', () => {
       ensureRouteLayer(m)
+      ensurePoiLayers(m, showDrinkingWaterRef.current, showToiletsRef.current)
       if (waypoints.length > 0) {
         const bounds = new maplibregl.LngLatBounds()
         waypoints.forEach((p) => bounds.extend([p.lon, p.lat]))
@@ -648,6 +718,7 @@ export default function App() {
     })
     m.on('style.load', () => {
       ensureRouteLayer(m)
+      ensurePoiLayers(m, showDrinkingWaterRef.current, showToiletsRef.current)
       m.getSource(ROUTE_SOURCE_ID)?.setData(routeGeoJson)
     })
     m.on('click', (e) => addWaypoint('', e.lngLat.lng, e.lngLat.lat))
@@ -697,6 +768,11 @@ export default function App() {
       mapMarkers.current.push(new maplibregl.Marker({ element }).setLngLat([point.lon, point.lat]).addTo(map))
     })
   }, [map, waypoints])
+
+  useEffect(() => {
+    if (!map || !map.isStyleLoaded()) return
+    ensurePoiLayers(map, showDrinkingWater, showToilets)
+  }, [map, showDrinkingWater, showToilets])
 
   useEffect(() => {
     if (!map || !map.isStyleLoaded()) return
@@ -1056,6 +1132,16 @@ export default function App() {
           <div>
             <label className={labelBase}>{t.totalMass} (kg)</label>
             <input type="number" className={inputBase} value={totalMass} onChange={(e) => setTotalMass(Number(e.target.value))} />
+          </div>
+          <div className="flex flex-col gap-3">
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input type="checkbox" className="w-5 h-5 rounded border-slate-200 dark:border-slate-700" checked={showDrinkingWater} onChange={(e) => setShowDrinkingWater(e.target.checked)} />
+              <span className="font-bold">{t.showDrinkingWater}</span>
+            </label>
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input type="checkbox" className="w-5 h-5 rounded border-slate-200 dark:border-slate-700" checked={showToilets} onChange={(e) => setShowToilets(e.target.checked)} />
+              <span className="font-bold">{t.showToilets}</span>
+            </label>
           </div>
         </div>
       </section>}

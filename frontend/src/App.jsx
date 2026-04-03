@@ -129,7 +129,7 @@ const MinimizeIcon = () => (
 const TEXT = {
   en: {
     appTitle: 'Bicly', appSub: 'Ride-ready route planning with local GPX storage.', planner: 'Planner', library: 'Library',
-    language: 'Language', profile: 'Routing profile', title: 'Route title', clearPins: 'Clear pins',
+    language: 'Language', profile: 'Routing profile', title: 'Route title', clearPins: 'delete Route',
     saveGenerated: 'Save generated GPX', routeReady: 'Route generated and shown on map.',
     addPinsHint: 'Click on the map to add pins. Drag and reorder on the left.',
     useLocationStart: 'Use my location as start', addMyLocation: 'my location',
@@ -168,10 +168,10 @@ const TEXT = {
     profile_trekking_noferries: 'Rad ohne Fähren',
     profile_fastbike: 'Rennrad',
     profile_liegerad: 'Liegerad',
-    language: 'Sprache', profile: 'Routing-Profil', title: 'Routentitel', clearPins: 'Pins löschen',
+    language: 'Sprache', profile: 'Routing-Profil', title: 'Routentitel', clearPins: 'Route Löschen',
     saveGenerated: 'Generierte GPX speichern', routeReady: 'Route erzeugt und auf der Karte angezeigt.',
     addPinsHint: 'Klicke auf die Karte, um Pins hinzuzufügen. Links kannst du sie sortieren.',
-    useLocationStart: 'Meinen Standort als Start nutzen', addMyLocation: 'mein Standort',
+    useLocationStart: 'Meinen Standort als Start nutzen', addMyLocation: 'Mein Standort',
     findPlace: 'Ort suchen', placeSearchPlaceholder: 'Stadt, Straße oder POI suchen', noPlacesFound: 'Keine Orte gefunden',
     searchingPlaces: 'Suche...', uploadSection: 'Route hochladen', uploadGpx: 'GPX hochladen',
     uploadRouteTitle: 'Routentitel (optional)', uploadRouteButton: 'Lokal speichern',

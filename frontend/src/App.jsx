@@ -1074,11 +1074,10 @@ export default function App() {
           </section>
         </section>
         <aside className={`fixed top-14 left-0 right-0 bottom-0 z-[80] bg-white dark:bg-slate-800 flex flex-col p-4 overflow-y-auto transition-all duration-300 ${plannerPanelOpen ? 'translate-y-0 opacity-100' : '-translate-y-full opacity-0 pointer-events-none'} md:static md:translate-y-0 md:opacity-100 md:pointer-events-auto md:w-96 md:border-l md:border-slate-200 md:dark:border-slate-700 ${plannerPanelOpen ? '' : 'md:mr-[-384px]'}`}>
-        <div className="flex justify-between items-center mb-4 pb-2 border-b border-slate-200 dark:border-slate-700">
+        <div className="hidden md:flex justify-between items-center mb-4 pb-2 border-b border-slate-200 dark:border-slate-700">
           <h2 className="text-xl font-bold">{t.plannerHeading}</h2>
-          <button type="button" className="md:hidden text-2xl" aria-label={t.closePlanner} onClick={() => setPlannerPanelOpen(false)}>✕</button>
         </div>
-        <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">{t.addPinsHint}</p>
+        <p className="hidden md:block text-sm text-slate-500 dark:text-slate-400 mb-4">{t.addPinsHint}</p>
         <div className="flex flex-col gap-4">
           <div>
             <label className={labelBase}>{t.profile}</label>

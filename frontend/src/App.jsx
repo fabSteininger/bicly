@@ -373,27 +373,70 @@ const parseDuration = (str) => {
   return seconds
 }
 
+const escapeXml = (unsafe) => {
+  if (typeof unsafe !== 'string') return ''
+  return unsafe.replace(/[<>&"']/g, (c) => {
+    switch (c) {
+      case '<': return '&lt;'; case '>': return '&gt;'; case '&': return '&amp;'; case '"': return '&quot;'; case "'": return '&apos;';
+      default: return c
+    }
+  })
+}
+
+const unescapeXml = (safe) => {
+  if (!safe) return ''
+  return safe.replace(/&(lt|gt|amp|quot|apos);/g, (m, c) => {
+    switch (c) {
+      case 'lt': return '<'; case 'gt': return '>'; case 'amp': return '&'; case 'quot': return '"'; case 'apos': return "'";
+      default: return m
+    }
+  })
+}
+
 const parseGpxStats = (gpxText, totalMass = 90) => {
   if (!gpxText) return emptyRouteStats
   try {
-    const xml = new DOMParser().parseFromString(gpxText, 'application/xml')
-    const trkpts = Array.from(xml.querySelectorAll('trkpt'))
-      .map((node) => ({
-        lon: Number(node.getAttribute('lon')),
-        lat: Number(node.getAttribute('lat')),
-        ele: Number(node.querySelector('ele')?.textContent ?? Number.NaN),
-      }))
-      .filter((point) => Number.isFinite(point.lon) && Number.isFinite(point.lat))
+    const trkptRegex = /<trkpt\s+([^>]+)>(?:([\s\S]*?)<\/trkpt>)?/g
+    const wptRegex = /<wpt\s+([^>]+)>(?:([\s\S]*?)<\/wpt>)?/g
+    const latRegex = /lat=['"]([^'"]+)['"]/
+    const lonRegex = /lon=['"]([^'"]+)['"]/
+    const eleRegex = /<ele>([^<]+)<\/ele>/
+    const nameRegex = /<name>([^<]+)<\/name>/
+
+    const trkpts = []
+    let match
+    while ((match = trkptRegex.exec(gpxText)) !== null) {
+      const attributes = match[1]
+      const content = match[2] || ''
+      const latM = latRegex.exec(attributes)
+      const lonM = lonRegex.exec(attributes)
+      if (latM && lonM) {
+        const eleM = eleRegex.exec(content)
+        trkpts.push({
+          lat: parseFloat(latM[1]),
+          lon: parseFloat(lonM[1]),
+          ele: eleM ? parseFloat(eleM[1]) : Number.NaN,
+        })
+      }
+    }
     if (trkpts.length < 2) return emptyRouteStats
 
-    const waypoints = Array.from(xml.querySelectorAll('wpt'))
-      .map((node) => ({
-        id: crypto.randomUUID(),
-        label: node.querySelector('name')?.textContent || 'Pin',
-        lon: Number(node.getAttribute('lon')),
-        lat: Number(node.getAttribute('lat')),
-      }))
-      .filter((p) => Number.isFinite(p.lon) && Number.isFinite(p.lat))
+    const waypoints = []
+    while ((match = wptRegex.exec(gpxText)) !== null) {
+      const attributes = match[1]
+      const content = match[2] || ''
+      const latM = latRegex.exec(attributes)
+      const lonM = lonRegex.exec(attributes)
+      if (latM && lonM) {
+        const nameM = nameRegex.exec(content)
+        waypoints.push({
+          id: crypto.randomUUID(),
+          label: nameM ? unescapeXml(nameM[1]) : 'Pin',
+          lat: parseFloat(latM[1]),
+          lon: parseFloat(lonM[1]),
+        })
+      }
+    }
 
     let distanceMeters = 0
     let ascentM = 0
@@ -407,7 +450,8 @@ const parseGpxStats = (gpxText, totalMass = 90) => {
       }
     }
 
-    const rawSummary = xml.querySelector('metadata > desc')?.textContent?.trim() ?? ''
+    const descMatch = /<metadata>[\s\S]*?<desc>([\s\S]*?)<\/desc>/.exec(gpxText)
+    const rawSummary = descMatch ? unescapeXml(descMatch[1].trim()) : ''
     const combinedText = `${rawSummary} ${gpxText}`
 
     let travelTimeS = 0
@@ -466,30 +510,20 @@ const parseGpxStats = (gpxText, totalMass = 90) => {
 const injectWaypointsToGpx = (gpx, waypoints) => {
   if (!waypoints || waypoints.length === 0) return gpx
   try {
-    const parser = new DOMParser()
-    const xmlDoc = parser.parseFromString(gpx, 'application/xml')
-    const gpxNode = xmlDoc.getElementsByTagName('gpx')[0]
-    if (!gpxNode) return gpx
+    const wptStrings = waypoints.map((wp) => {
+      const label = wp.label ? `<name>${escapeXml(wp.label)}</name>` : ''
+      return `  <wpt lat="${wp.lat.toFixed(6)}" lon="${wp.lon.toFixed(6)}">${label}</wpt>`
+    }).join('\n')
 
-    const firstTrk = gpxNode.getElementsByTagName('trk')[0]
-
-    waypoints.forEach((wp) => {
-      const wpt = xmlDoc.createElement('wpt')
-      wpt.setAttribute('lat', wp.lat.toFixed(6))
-      wpt.setAttribute('lon', wp.lon.toFixed(6))
-      if (wp.label) {
-        const name = xmlDoc.createElement('name')
-        name.textContent = wp.label
-        wpt.appendChild(name)
-      }
-      if (firstTrk) {
-        gpxNode.insertBefore(wpt, firstTrk)
-      } else {
-        gpxNode.appendChild(wpt)
-      }
-    })
-
-    return new XMLSerializer().serializeToString(xmlDoc)
+    const trkIndex = gpx.indexOf('<trk>')
+    if (trkIndex !== -1) {
+      return gpx.slice(0, trkIndex) + wptStrings + '\n' + gpx.slice(trkIndex)
+    }
+    const gpxEndIndex = gpx.indexOf('</gpx>')
+    if (gpxEndIndex !== -1) {
+      return gpx.slice(0, gpxEndIndex) + wptStrings + '\n' + gpx.slice(gpxEndIndex)
+    }
+    return gpx
   } catch {
     return gpx
   }
@@ -498,10 +532,18 @@ const injectWaypointsToGpx = (gpx, waypoints) => {
 const parseGpxToGeoJson = (gpxText) => {
   if (!gpxText) return emptyRouteGeoJson
   try {
-    const xml = new DOMParser().parseFromString(gpxText, 'application/xml')
-    const points = Array.from(xml.querySelectorAll('trkpt'))
-      .map((node) => [Number(node.getAttribute('lon')), Number(node.getAttribute('lat'))])
-      .filter(([lon, lat]) => Number.isFinite(lon) && Number.isFinite(lat))
+    const trkptRegex = /<trkpt\s+([^>]+)>/g
+    const latRegex = /lat=['"]([^'"]+)['"]/
+    const lonRegex = /lon=['"]([^'"]+)['"]/
+    const points = []
+    let match
+    while ((match = trkptRegex.exec(gpxText)) !== null) {
+      const latM = latRegex.exec(match[1])
+      const lonM = lonRegex.exec(match[1])
+      if (latM && lonM) {
+        points.push([parseFloat(lonM[1]), parseFloat(latM[1])])
+      }
+    }
     if (points.length < 2) return emptyRouteGeoJson
     return { type: 'FeatureCollection', features: [{ type: 'Feature', geometry: { type: 'LineString', coordinates: points }, properties: {} }] }
   } catch {
@@ -934,7 +976,7 @@ export default function App() {
 
   return (
     <div className={`flex h-[100dvh] w-screen overflow-hidden relative bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 ${userMenuOpen ? 'menu-open' : ''}`}>
-      <aside className={`fixed top-14 left-0 right-0 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 z-[90] flex flex-col transition-all duration-300 transform ${userMenuOpen ? 'translate-y-0 opacity-100' : '-translate-y-full opacity-0 pointer-events-none'}`}>
+      <aside className={`fixed top-14 left-0 right-0 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 z-[290] flex flex-col transition-all duration-300 transform ${userMenuOpen ? 'translate-y-0 opacity-100' : '-translate-y-full opacity-0 pointer-events-none'}`}>
         <div className="flex flex-col gap-1 p-4">
           {[
             { id: 'planner', label: t.planner },
@@ -955,7 +997,7 @@ export default function App() {
       </aside>
 
       <main className="flex-1 flex flex-col min-w-0 relative">
-        <header className="flex items-center justify-between h-14 gap-3 p-2 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 z-[100]">
+        <header className="flex items-center justify-between h-14 gap-3 p-2 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 z-[300]">
           <button type="button" className="flex items-center justify-center w-10 h-10 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors" aria-label={t.appMenu} onClick={() => setUserMenuOpen((prev) => !prev)}>
             <span className="w-6 h-6"><HamburgerIcon /></span>
           </button>
@@ -1031,12 +1073,11 @@ export default function App() {
             {showRouteDetails && !latestGpx && <p className="p-4 text-sm text-slate-500 italic">{t.routeDetailsUnavailable}</p>}
           </section>
         </section>
-        <aside className={`fixed inset-0 z-[400] bg-white dark:bg-slate-800 flex flex-col p-4 overflow-y-auto transition-transform duration-300 ${plannerPanelOpen ? 'translate-y-0' : 'translate-y-full'} md:static md:translate-y-0 md:w-96 md:border-l md:border-slate-200 md:dark:border-slate-700 ${plannerPanelOpen ? '' : 'md:mr-[-384px]'}`}>
-        <div className="flex justify-between items-center mb-4 pb-2 border-b border-slate-200 dark:border-slate-700">
+        <aside className={`fixed top-14 left-0 right-0 bottom-0 z-[280] bg-white dark:bg-slate-800 flex flex-col p-4 overflow-y-auto transition-all duration-300 ${plannerPanelOpen ? 'translate-y-0 opacity-100' : '-translate-y-full opacity-0 pointer-events-none'} md:static md:translate-y-0 md:opacity-100 md:pointer-events-auto md:w-96 md:border-l md:border-slate-200 md:dark:border-slate-700 ${plannerPanelOpen ? '' : 'md:mr-[-384px]'}`}>
+        <div className="hidden md:flex justify-between items-center mb-4 pb-2 border-b border-slate-200 dark:border-slate-700">
           <h2 className="text-xl font-bold">{t.plannerHeading}</h2>
-          <button type="button" className="md:hidden text-2xl" aria-label={t.closePlanner} onClick={() => setPlannerPanelOpen(false)}>✕</button>
         </div>
-        <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">{t.addPinsHint}</p>
+        <p className="hidden md:block text-sm text-slate-500 dark:text-slate-400 mb-4">{t.addPinsHint}</p>
         <div className="flex flex-col gap-4">
           <div>
             <label className={labelBase}>{t.profile}</label>

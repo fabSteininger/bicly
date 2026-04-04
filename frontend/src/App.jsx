@@ -373,28 +373,65 @@ const parseDuration = (str) => {
   return seconds
 }
 
+const escapeXml = (unsafe) => {
+  if (typeof unsafe !== 'string') return ''
+  return unsafe.replace(/[<>&"']/g, (c) => {
+    switch (c) {
+      case '<': return '&lt;'; case '>': return '&gt;'; case '&': return '&amp;'; case '"': return '&quot;'; case "'": return '&apos;';
+      default: return c
+    }
+  })
+}
+
+const unescapeXml = (safe) => {
+  if (!safe) return ''
+  return safe.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&apos;/g, "'")
+}
+
 const parseGpxStats = (gpxText, totalMass = 90) => {
   if (!gpxText) return emptyRouteStats
   try {
-    const xml = new DOMParser().parseFromString(gpxText, 'text/xml')
-    if (xml.getElementsByTagName('parsererror').length > 0) return emptyRouteStats
-    const trkpts = Array.from(xml.querySelectorAll('trkpt'))
-      .map((node) => ({
-        lon: Number(node.getAttribute('lon')),
-        lat: Number(node.getAttribute('lat')),
-        ele: Number(node.querySelector('ele')?.textContent ?? Number.NaN),
-      }))
-      .filter((point) => Number.isFinite(point.lon) && Number.isFinite(point.lat))
+    const trkptRegex = /<trkpt\s+([^>]+)>(?:([\s\S]*?)<\/trkpt>)?/g
+    const wptRegex = /<wpt\s+([^>]+)>(?:([\s\S]*?)<\/wpt>)?/g
+    const latRegex = /lat=['"]([^'"]+)['"]/
+    const lonRegex = /lon=['"]([^'"]+)['"]/
+    const eleRegex = /<ele>([^<]+)<\/ele>/
+    const nameRegex = /<name>([^<]+)<\/name>/
+
+    const trkpts = []
+    let match
+    while ((match = trkptRegex.exec(gpxText)) !== null) {
+      const attributes = match[1]
+      const content = match[2] || ''
+      const latM = latRegex.exec(attributes)
+      const lonM = lonRegex.exec(attributes)
+      if (latM && lonM) {
+        const eleM = eleRegex.exec(content)
+        trkpts.push({
+          lat: parseFloat(latM[1]),
+          lon: parseFloat(lonM[1]),
+          ele: eleM ? parseFloat(eleM[1]) : Number.NaN,
+        })
+      }
+    }
     if (trkpts.length < 2) return emptyRouteStats
 
-    const waypoints = Array.from(xml.querySelectorAll('wpt'))
-      .map((node) => ({
-        id: crypto.randomUUID(),
-        label: node.querySelector('name')?.textContent || 'Pin',
-        lon: Number(node.getAttribute('lon')),
-        lat: Number(node.getAttribute('lat')),
-      }))
-      .filter((p) => Number.isFinite(p.lon) && Number.isFinite(p.lat))
+    const waypoints = []
+    while ((match = wptRegex.exec(gpxText)) !== null) {
+      const attributes = match[1]
+      const content = match[2] || ''
+      const latM = latRegex.exec(attributes)
+      const lonM = lonRegex.exec(attributes)
+      if (latM && lonM) {
+        const nameM = nameRegex.exec(content)
+        waypoints.push({
+          id: crypto.randomUUID(),
+          label: nameM ? unescapeXml(nameM[1]) : 'Pin',
+          lat: parseFloat(latM[1]),
+          lon: parseFloat(lonM[1]),
+        })
+      }
+    }
 
     let distanceMeters = 0
     let ascentM = 0
@@ -408,7 +445,8 @@ const parseGpxStats = (gpxText, totalMass = 90) => {
       }
     }
 
-    const rawSummary = xml.querySelector('metadata > desc')?.textContent?.trim() ?? ''
+    const descMatch = /<metadata>[\s\S]*?<desc>([\s\S]*?)<\/desc>/.exec(gpxText)
+    const rawSummary = descMatch ? unescapeXml(descMatch[1].trim()) : ''
     const combinedText = `${rawSummary} ${gpxText}`
 
     let travelTimeS = 0
@@ -467,31 +505,20 @@ const parseGpxStats = (gpxText, totalMass = 90) => {
 const injectWaypointsToGpx = (gpx, waypoints) => {
   if (!waypoints || waypoints.length === 0) return gpx
   try {
-    const parser = new DOMParser()
-    const xmlDoc = parser.parseFromString(gpx, 'text/xml')
-    if (xmlDoc.getElementsByTagName('parsererror').length > 0) return gpx
-    const gpxNode = xmlDoc.getElementsByTagName('gpx')[0]
-    if (!gpxNode) return gpx
+    const wptStrings = waypoints.map((wp) => {
+      const label = wp.label ? `<name>${escapeXml(wp.label)}</name>` : ''
+      return `  <wpt lat="${wp.lat.toFixed(6)}" lon="${wp.lon.toFixed(6)}">${label}</wpt>`
+    }).join('\n')
 
-    const firstTrk = gpxNode.getElementsByTagName('trk')[0]
-
-    waypoints.forEach((wp) => {
-      const wpt = xmlDoc.createElement('wpt')
-      wpt.setAttribute('lat', wp.lat.toFixed(6))
-      wpt.setAttribute('lon', wp.lon.toFixed(6))
-      if (wp.label) {
-        const name = xmlDoc.createElement('name')
-        name.textContent = wp.label
-        wpt.appendChild(name)
-      }
-      if (firstTrk) {
-        gpxNode.insertBefore(wpt, firstTrk)
-      } else {
-        gpxNode.appendChild(wpt)
-      }
-    })
-
-    return new XMLSerializer().serializeToString(xmlDoc)
+    const trkIndex = gpx.indexOf('<trk>')
+    if (trkIndex !== -1) {
+      return gpx.slice(0, trkIndex) + wptStrings + '\n' + gpx.slice(trkIndex)
+    }
+    const gpxEndIndex = gpx.indexOf('</gpx>')
+    if (gpxEndIndex !== -1) {
+      return gpx.slice(0, gpxEndIndex) + wptStrings + '\n' + gpx.slice(gpxEndIndex)
+    }
+    return gpx
   } catch {
     return gpx
   }
@@ -500,11 +527,18 @@ const injectWaypointsToGpx = (gpx, waypoints) => {
 const parseGpxToGeoJson = (gpxText) => {
   if (!gpxText) return emptyRouteGeoJson
   try {
-    const xml = new DOMParser().parseFromString(gpxText, 'text/xml')
-    if (xml.getElementsByTagName('parsererror').length > 0) return emptyRouteGeoJson
-    const points = Array.from(xml.querySelectorAll('trkpt'))
-      .map((node) => [Number(node.getAttribute('lon')), Number(node.getAttribute('lat'))])
-      .filter(([lon, lat]) => Number.isFinite(lon) && Number.isFinite(lat))
+    const trkptRegex = /<trkpt\s+([^>]+)>/g
+    const latRegex = /lat=['"]([^'"]+)['"]/
+    const lonRegex = /lon=['"]([^'"]+)['"]/
+    const points = []
+    let match
+    while ((match = trkptRegex.exec(gpxText)) !== null) {
+      const latM = latRegex.exec(match[1])
+      const lonM = lonRegex.exec(match[1])
+      if (latM && lonM) {
+        points.push([parseFloat(lonM[1]), parseFloat(latM[1])])
+      }
+    }
     if (points.length < 2) return emptyRouteGeoJson
     return { type: 'FeatureCollection', features: [{ type: 'Feature', geometry: { type: 'LineString', coordinates: points }, properties: {} }] }
   } catch {

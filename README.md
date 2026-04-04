@@ -38,8 +38,8 @@ Bicly is a **Frontend-only** cycling app without login or backend.
 
 ```bash
 cd frontend
-pnpm install
-pnpm dev -- --host 0.0.0.0 --port 5173
+npm install
+npm run dev -- --host 0.0.0.0 --port 5173
 ```
 
 ## Static Hosting
@@ -55,13 +55,13 @@ The app can be easily run on the following platforms (and many others):
 
 ### Deployment (General)
 1. Navigate to the `frontend` directory.
-2. Run `pnpm install` and `pnpm build`.
+2. Run `npm install` and `npm run build`.
 3. Upload the contents of the `dist` folder to your web server.
 
 ### Deployment on Vercel
 1. Import the repository into Vercel.
 2. Set the Root Directory to `frontend`.
-3. Build Command: `pnpm build`
+3. Build Command: `npm run build`
 4. Output Directory: `dist`
 
 ### BRouter Self-Hosting

@@ -376,7 +376,8 @@ const parseDuration = (str) => {
 const parseGpxStats = (gpxText, totalMass = 90) => {
   if (!gpxText) return emptyRouteStats
   try {
-    const xml = new DOMParser().parseFromString(gpxText, 'application/xml')
+    const xml = new DOMParser().parseFromString(gpxText, 'text/xml')
+    if (xml.getElementsByTagName('parsererror').length > 0) return emptyRouteStats
     const trkpts = Array.from(xml.querySelectorAll('trkpt'))
       .map((node) => ({
         lon: Number(node.getAttribute('lon')),
@@ -467,7 +468,8 @@ const injectWaypointsToGpx = (gpx, waypoints) => {
   if (!waypoints || waypoints.length === 0) return gpx
   try {
     const parser = new DOMParser()
-    const xmlDoc = parser.parseFromString(gpx, 'application/xml')
+    const xmlDoc = parser.parseFromString(gpx, 'text/xml')
+    if (xmlDoc.getElementsByTagName('parsererror').length > 0) return gpx
     const gpxNode = xmlDoc.getElementsByTagName('gpx')[0]
     if (!gpxNode) return gpx
 
@@ -498,7 +500,8 @@ const injectWaypointsToGpx = (gpx, waypoints) => {
 const parseGpxToGeoJson = (gpxText) => {
   if (!gpxText) return emptyRouteGeoJson
   try {
-    const xml = new DOMParser().parseFromString(gpxText, 'application/xml')
+    const xml = new DOMParser().parseFromString(gpxText, 'text/xml')
+    if (xml.getElementsByTagName('parsererror').length > 0) return emptyRouteGeoJson
     const points = Array.from(xml.querySelectorAll('trkpt'))
       .map((node) => [Number(node.getAttribute('lon')), Number(node.getAttribute('lat'))])
       .filter(([lon, lat]) => Number.isFinite(lon) && Number.isFinite(lat))
@@ -1031,7 +1034,7 @@ export default function App() {
             {showRouteDetails && !latestGpx && <p className="p-4 text-sm text-slate-500 italic">{t.routeDetailsUnavailable}</p>}
           </section>
         </section>
-        <aside className={`fixed inset-0 z-[400] bg-white dark:bg-slate-800 flex flex-col p-4 overflow-y-auto transition-transform duration-300 ${plannerPanelOpen ? 'translate-y-0' : 'translate-y-full'} md:static md:translate-y-0 md:w-96 md:border-l md:border-slate-200 md:dark:border-slate-700 ${plannerPanelOpen ? '' : 'md:mr-[-384px]'}`}>
+        <aside className={`fixed top-14 left-0 right-0 bottom-0 z-[80] bg-white dark:bg-slate-800 flex flex-col p-4 overflow-y-auto transition-all duration-300 ${plannerPanelOpen ? 'translate-y-0 opacity-100' : '-translate-y-full opacity-0 pointer-events-none'} md:static md:translate-y-0 md:opacity-100 md:pointer-events-auto md:w-96 md:border-l md:border-slate-200 md:dark:border-slate-700 ${plannerPanelOpen ? '' : 'md:mr-[-384px]'}`}>
         <div className="flex justify-between items-center mb-4 pb-2 border-b border-slate-200 dark:border-slate-700">
           <h2 className="text-xl font-bold">{t.plannerHeading}</h2>
           <button type="button" className="md:hidden text-2xl" aria-label={t.closePlanner} onClick={() => setPlannerPanelOpen(false)}>✕</button>

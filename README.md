@@ -1,59 +1,76 @@
 # Bicly
 
-Bicly ist jetzt eine **Frontend-only** Cycling-App ohne Login/Backend.
+Bicly is a **Frontend-only** cycling app without login or backend.
 
 ## Stack
 
 - **Frontend**: React + Vite + MapLibre GL
-- **Routing**: Direkt über öffentlichen BRouter (`https://brouter.de/brouter`)
-- **Geocoding**: Nominatim Suche
-- **Speicherung**: lokale Browser-Speicherung (`localStorage`)
+- **Routing**: Direct via public BRouter (`https://brouter.de/brouter`)
+- **Geocoding**: Nominatim search
+- **Storage**: Local browser storage (`localStorage`)
 
 ## Features
 
-- Routenplanung mit MapLibre und Wegpunkten
-- GPX-Generierung über BRouter
-- GPX lokal speichern (ohne Account/Login)
-- Eigene GPX-Dateien hochladen und lokal in der Bibliothek verwalten
-- Route aus lokaler Bibliothek wieder auf Karte laden
+- Route planning with MapLibre and waypoints
+- GPX generation via BRouter
+- Save GPX locally (no account/login needed)
+- Upload your own GPX files and manage them in your local library
+- Load routes from your local library back onto the map
 
-## Lokal starten
+## Screenshots
+
+### Planner (Light Mode)
+![Planner Light](frontend/public/screenshots/planner-light.png)
+
+### Planner (Dark Mode)
+![Planner Dark](frontend/public/screenshots/planner-dark.png)
+
+### Planner Sidebar
+![Planner Sidebar](frontend/public/screenshots/planner-sidebar.png)
+
+### Library
+![Library](frontend/public/screenshots/library.png)
+
+### Settings
+![Settings](frontend/public/screenshots/settings.png)
+
+## Start Locally
 
 ```bash
 cd frontend
-npm install
-npm run dev -- --host 0.0.0.0 --port 5173
+pnpm install
+pnpm dev -- --host 0.0.0.0 --port 5173
 ```
 
-## Statisches Hosting
+## Static Hosting
 
-Bicly ist eine reine **Single Page Application (SPA)**. Da alle API-Anfragen (Routing, Geocoding, Karten-Tiles) direkt vom Browser an externe CORS-fähige Dienste gesendet werden und die Datenspeicherung im `localStorage` erfolgt, kann die App auf jedem statischen Webserver gehostet werden.
+Bicly is a pure **Single Page Application (SPA)**. Since all API requests (routing, geocoding, map tiles) are sent directly from the browser to external CORS-enabled services, and data storage happens in `localStorage`, the app can be hosted on any static web server.
 
-### Plattformen
-Die App kann problemlos auf folgenden Plattformen (und vielen weiteren) betrieben werden:
+### Platforms
+The app can be easily run on the following platforms (and many others):
 - **GitHub Pages**
 - **Vercel**
 - **Netlify**
 - **S3 / Cloudfront**
 
-### Deployment (allgemein)
-1. In den Ordner `frontend` wechseln.
-2. `npm install` und `npm run build` ausführen.
-3. Den Inhalt des `dist`-Ordners auf den Webserver hochladen.
+### Deployment (General)
+1. Navigate to the `frontend` directory.
+2. Run `pnpm install` and `pnpm build`.
+3. Upload the contents of the `dist` folder to your web server.
 
-### Deployment auf Vercel
-1. Repository in Vercel importieren.
-2. Root Directory auf `frontend` setzen.
-3. Build Command: `npm run build`
+### Deployment on Vercel
+1. Import the repository into Vercel.
+2. Set the Root Directory to `frontend`.
+3. Build Command: `pnpm build`
 4. Output Directory: `dist`
 
 ### BRouter Self-Hosting
-Die Standard-API unter `brouter.de` dient primär Testzwecken. Für den produktiven Einsatz wird dringend empfohlen, eine eigene BRouter-Instanz auf einem VPS oder dedizierten Server zu betreiben.
+The default API at `brouter.de` is primarily for testing. For production use, it is strongly recommended to run your own BRouter instance on a VPS or dedicated server.
 
-**Hardware-Anforderungen (für den Betrieb):**
-- **Speicherplatz:** ca. **50 GB** für die `.rd5` Routing-Daten der gesamten Welt.
-- **Arbeitsspeicher (RAM):** Mindestens **512 MB**.
-- **CPU:** Ein einzelner CPU-Kern ist ausreichend.
+**Hardware Requirements (for operation):**
+- **Storage:** approx. **50 GB** for `.rd5` routing data for the entire world.
+- **RAM:** At least **512 MB**.
+- **CPU:** A single CPU core is sufficient.
 
-### Umgebungsvariablen
-- `VITE_BROUTER_DIRECT_URL`: Hier sollte die URL der eigenen BRouter-Instanz eingetragen werden (z.B. `https://dein-server.de/brouter`). Default: `https://brouter.de/brouter`.
+### Environment Variables
+- `VITE_BROUTER_DIRECT_URL`: Enter the URL of your own BRouter instance here (e.g., `https://your-server.com/brouter`). Default: `https://brouter.de/brouter`.

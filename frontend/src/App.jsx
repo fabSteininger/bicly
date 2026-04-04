@@ -385,7 +385,12 @@ const escapeXml = (unsafe) => {
 
 const unescapeXml = (safe) => {
   if (!safe) return ''
-  return safe.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&apos;/g, "'")
+  return safe.replace(/&(lt|gt|amp|quot|apos);/g, (m, c) => {
+    switch (c) {
+      case 'lt': return '<'; case 'gt': return '>'; case 'amp': return '&'; case 'quot': return '"'; case 'apos': return "'";
+      default: return m
+    }
+  })
 }
 
 const parseGpxStats = (gpxText, totalMass = 90) => {

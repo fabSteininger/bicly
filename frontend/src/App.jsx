@@ -130,6 +130,8 @@ const TEXT = {
   en: {
     appTitle: 'Bicly', appSub: 'Ride-ready route planning with local GPX storage.', planner: 'Planner', library: 'Library',
     language: 'Language', profile: 'Routing profile', title: 'Route title', clearPins: 'delete Route',
+    confirmClear: 'Are you sure you want to delete the current route?',
+    moveUp: 'Move waypoint up', moveDown: 'Move waypoint down', removeWaypoint: 'Remove waypoint',
     saveGenerated: 'Save generated GPX', routeReady: 'Route generated and shown on map.',
     addPinsHint: 'Click on the map to add pins. Drag and reorder on the left.',
     useLocationStart: 'Use my location as start', addMyLocation: 'my location',
@@ -169,6 +171,8 @@ const TEXT = {
     profile_fastbike: 'Rennrad',
     profile_liegerad: 'Liegerad',
     language: 'Sprache', profile: 'Routing-Profil', title: 'Routentitel', clearPins: 'Route Löschen',
+    confirmClear: 'Bist du sicher, dass du die aktuelle Route löschen möchtest?',
+    moveUp: 'Wegpunkt nach oben verschieben', moveDown: 'Wegpunkt nach unten verschieben', removeWaypoint: 'Wegpunkt entfernen',
     saveGenerated: 'Generierte GPX speichern', routeReady: 'Route erzeugt und auf der Karte angezeigt.',
     addPinsHint: 'Klicke auf die Karte, um Pins hinzuzufügen. Links kannst du sie sortieren.',
     useLocationStart: 'Meinen Standort als Start nutzen', addMyLocation: 'Mein Standort',
@@ -1069,11 +1073,11 @@ export default function App() {
             )}
           </div>
         </div>
-        <WaypointList waypoints={waypoints} setWaypoints={(val) => { setWaypoints(val); setIsExternalRoute(false); }} onMove={moveWaypoint} />
+        <WaypointList waypoints={waypoints} setWaypoints={(val) => { setWaypoints(val); setIsExternalRoute(false); }} onMove={moveWaypoint} t={t} />
         {routingError && <div className="p-3 mb-4 text-xs font-mono bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 border border-red-100 dark:border-red-900/30 rounded-xl overflow-x-auto whitespace-pre-wrap">{routingError}</div>}
         <div className="flex flex-col gap-2 mt-auto">
           <button className={btnSecondary} onClick={() => { if (userLocation) addWaypoint(t.addMyLocation, userLocation.lon, userLocation.lat); }} disabled={!userLocation}>{t.addMyLocation}</button>
-          <button className={btnSecondary} onClick={() => { setWaypoints([]); setIsExternalRoute(false); }}>{t.clearPins}</button>
+          <button className={btnDanger} onClick={() => { if (window.confirm(t.confirmClear)) { setWaypoints([]); setIsExternalRoute(false); } }} disabled={waypoints.length === 0}>{t.clearPins}</button>
           <button className={btnSecondary} onClick={saveGeneratedRoute} disabled={!latestGpx}>{t.saveGenerated}</button>
           <button className={btnPrimary} onClick={downloadCurrentRoute} disabled={!latestGpx}>{t.downloadGpx}</button>
         </div>

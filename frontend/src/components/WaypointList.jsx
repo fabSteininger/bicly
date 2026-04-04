@@ -1,6 +1,6 @@
 import React from 'react'
 
-function WaypointItem({ waypoint, index, isFirst, isLast, onRemove, onMove }) {
+function WaypointItem({ waypoint, index, isFirst, isLast, onRemove, onMove, t }) {
   return (
     <li className="flex items-center gap-2 p-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800">
       <div className="flex flex-col gap-1">
@@ -9,7 +9,7 @@ function WaypointItem({ waypoint, index, isFirst, isLast, onRemove, onMove }) {
           disabled={isFirst}
           onClick={() => onMove(index, -1)}
           className={`p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-30 disabled:hover:bg-transparent`}
-          aria-label="Move up"
+          aria-label={t.moveUp}
         >
           <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="18 15 12 9 6 15"></polyline></svg>
         </button>
@@ -18,7 +18,7 @@ function WaypointItem({ waypoint, index, isFirst, isLast, onRemove, onMove }) {
           disabled={isLast}
           onClick={() => onMove(index, 1)}
           className={`p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-30 disabled:hover:bg-transparent`}
-          aria-label="Move down"
+          aria-label={t.moveDown}
         >
           <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
         </button>
@@ -30,7 +30,7 @@ function WaypointItem({ waypoint, index, isFirst, isLast, onRemove, onMove }) {
       <button
         onClick={() => onRemove(waypoint.id)}
         className="p-1 text-slate-400 hover:text-red-500 transition-colors"
-        aria-label="Remove waypoint"
+        aria-label={t.removeWaypoint}
       >
         ✕
       </button>
@@ -38,7 +38,7 @@ function WaypointItem({ waypoint, index, isFirst, isLast, onRemove, onMove }) {
   )
 }
 
-export default function WaypointList({ waypoints, setWaypoints, onMove }) {
+export default function WaypointList({ waypoints, setWaypoints, onMove, t }) {
   const onRemove = (id) => setWaypoints(waypoints.filter((w) => w.id !== id))
 
   return (
@@ -52,6 +52,7 @@ export default function WaypointList({ waypoints, setWaypoints, onMove }) {
           isLast={index === waypoints.length - 1}
           onRemove={onRemove}
           onMove={onMove}
+          t={t}
         />
       ))}
     </ul>

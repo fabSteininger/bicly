@@ -2,8 +2,7 @@ version: '3.8'
 
 services:
   bicly:
-    build:
-      context: ./frontend
+    image: ghcr.io/fabsteininger/bicly:main
     ports:
       - "80:80"
       - "443:443"

@@ -91,7 +91,7 @@ const inputBase = "w-full p-2 rounded-xl border border-slate-200 dark:border-sla
 const labelBase = "block text-sm font-bold mb-1 text-slate-500 dark:text-slate-400 uppercase tracking-wider"
 
 const HamburgerIcon = () => (
-  <svg viewBox="0 0 122.88 95.95" aria-hidden="true" focusable="false" fill="currentColor">
+  <svg viewBox="0 0 122.88 95.95" aria-hidden="true" focusable="false" fill="currentColor" className="w-full h-full block">
     <path d="M8.94,0h105c4.92,0,8.94,4.02,8.94,8.94l0,0c0,4.92-4.02,8.94-8.94,8.94h-105C4.02,17.88,0,13.86,0,8.94l0,0 C0,4.02,4.02,0,8.94,0L8.94,0z M8.94,78.07h105c4.92,0,8.94,4.02,8.94,8.94l0,0c0,4.92-4.02,8.94-8.94,8.94h-105 C4.02,95.95,0,91.93,0,87.01l0,0C0,82.09,4.02,78.07,8.94,78.07L8.94,78.07z M8.94,39.03h105c4.92,0,8.94,4.02,8.94,8.94l0,0 c0,4.92-4.02,8.94-8.94,8.94h-105C4.02,56.91,0,52.89,0,47.97l0,0C0,43.06,4.02,39.03,8.94,39.03L8.94,39.03z" />
   </svg>
 )
@@ -532,17 +532,26 @@ const parseGpxStats = (gpxText, totalMass = 90) => {
       bears: Math.round(scaledEnergyJoules / 33500),
       rawSummary,
       waypoints,
-      elevationProfile: trkpts.reduce((acc, point, index) => {
-        if (!Number.isFinite(point.ele)) return acc
-        if (!index) return [{ distanceM: 0, elevationM: point.ele, slopeDeg: 0, lon: point.lon, lat: point.lat }]
-        const previous = trkpts[index - 1]
-        const previousDistance = acc[acc.length - 1]?.distanceM ?? 0
-        const segmentMeters = haversineMeters(previous, point)
-        const slopeDeg = Number.isFinite(previous.ele) && segmentMeters > 0
-          ? Math.abs((Math.atan((point.ele - previous.ele) / segmentMeters) * 180) / Math.PI)
-          : 0
-        return [...acc, { distanceM: previousDistance + segmentMeters, elevationM: point.ele, slopeDeg, lon: point.lon, lat: point.lat }]
-      }, []),
+      elevationProfile: (() => {
+        const profile = []
+        let currentDistanceM = 0
+        for (let i = 0; i < trkpts.length; i++) {
+          const point = trkpts[i]
+          if (!Number.isFinite(point.ele)) continue
+          if (i === 0) {
+            profile.push({ distanceM: 0, elevationM: point.ele, slopeDeg: 0, lon: point.lon, lat: point.lat })
+          } else {
+            const previous = trkpts[i - 1]
+            const segmentMeters = haversineMeters(previous, point)
+            currentDistanceM += segmentMeters
+            const slopeDeg = Number.isFinite(previous.ele) && segmentMeters > 0
+              ? Math.abs((Math.atan((point.ele - previous.ele) / segmentMeters) * 180) / Math.PI)
+              : 0
+            profile.push({ distanceM: currentDistanceM, elevationM: point.ele, slopeDeg, lon: point.lon, lat: point.lat })
+          }
+        }
+        return profile
+      })(),
     }
   } catch {
     return emptyRouteStats
@@ -1041,15 +1050,15 @@ export default function App() {
 
       <main className="flex-1 flex flex-col min-w-0 relative">
         <header className="flex items-center justify-between h-14 gap-3 p-2 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 z-[300]">
-          <button type="button" className="flex items-center justify-center w-10 h-10 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors" aria-label={t.appMenu} onClick={() => setUserMenuOpen((prev) => !prev)}>
-            <span className="w-6 h-6"><HamburgerIcon /></span>
+          <button type="button" className="flex items-center justify-center w-10 h-10 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors group" aria-label={t.appMenu} onClick={() => setUserMenuOpen((prev) => !prev)}>
+            <div className="w-6 h-6 flex items-center justify-center"><HamburgerIcon /></div>
           </button>
           <div className="flex-1 min-w-0" onClick={() => setShowSubtitle((prev) => !prev)} style={{ cursor: 'pointer' }}>
             <div className="text-xl font-extrabold truncate">{t.appTitle}</div>
             <p className={`text-xs text-slate-500 dark:text-slate-400 truncate transition-all duration-300 ${showSubtitle ? 'max-h-10 opacity-100' : 'max-h-0 opacity-0 md:max-h-10 md:opacity-100'}`}>{t.appSub}</p>
           </div>
           <div className="flex items-center gap-2">
-            <button type="button" className="flex items-center justify-center w-10 h-10 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors text-xl" onClick={() => setIsDarkMode(!isDarkMode)} aria-label="Toggle dark mode">
+            <button type="button" className="flex items-center justify-center w-10 h-10 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors text-xl" onClick={() => setIsDarkMode(!isDarkMode)} aria-label="Toggle dark mode">
               {isDarkMode ? '🌞' : '🌙'}
             </button>
             <button
@@ -1065,7 +1074,7 @@ export default function App() {
             {activePage === 'planner' && (
               <button
                 type="button"
-                className="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-700 font-bold text-sm hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
+                className="flex items-center gap-2 px-3 h-10 rounded-xl bg-slate-100 dark:bg-slate-700 font-bold text-sm hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
                 aria-expanded={plannerPanelOpen}
                 aria-label={plannerPanelOpen ? t.closePlanner : t.openRouteTools}
                 onClick={(e) => { e.stopPropagation(); setPlannerPanelOpen((prev) => !prev) }}

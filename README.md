@@ -37,11 +37,24 @@ Bicly is a **Frontend-only** cycling app without login or backend.
 
 ## Start Locally
 
+### npm
 ```bash
 cd frontend
 npm install
 npm run dev -- --host 0.0.0.0 --port 5173
 ```
+
+### Docker Compose
+Bicly can be started together with a local BRouter instance using Docker Compose:
+
+1. **Download routing segments:**
+   Create a folder `brouter/segments4` and download the `.rd5` files for your region from [brouter.de/brouter/segments4/](https://brouter.de/brouter/segments4/).
+2. **Start services:**
+   ```bash
+   docker-compose up -d
+   ```
+3. **Access Bicly:**
+   The app is available at `http://localhost` (port 80) and `https://localhost` (port 443).
 
 ## Static Hosting
 

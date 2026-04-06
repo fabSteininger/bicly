@@ -12,8 +12,7 @@ services:
     restart: always
 
   brouter:
-    build:
-      context: https://github.com/abrensch/brouter.git#master
+    image: ghcr.io/abrensch/brouter:latest
     volumes:
       - ./brouter/segments4:/segments4
     ports:

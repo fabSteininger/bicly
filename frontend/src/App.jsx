@@ -91,7 +91,7 @@ const inputBase = "w-full p-2 rounded-xl border border-slate-200 dark:border-sla
 const labelBase = "block text-sm font-bold mb-1 text-slate-500 dark:text-slate-400 uppercase tracking-wider"
 
 const HamburgerIcon = () => (
-  <svg viewBox="0 0 122.88 95.95" aria-hidden="true" focusable="false" fill="currentColor">
+  <svg viewBox="0 0 122.88 95.95" aria-hidden="true" focusable="false" fill="currentColor" className="w-full h-full block">
     <path d="M8.94,0h105c4.92,0,8.94,4.02,8.94,8.94l0,0c0,4.92-4.02,8.94-8.94,8.94h-105C4.02,17.88,0,13.86,0,8.94l0,0 C0,4.02,4.02,0,8.94,0L8.94,0z M8.94,78.07h105c4.92,0,8.94,4.02,8.94,8.94l0,0c0,4.92-4.02,8.94-8.94,8.94h-105 C4.02,95.95,0,91.93,0,87.01l0,0C0,82.09,4.02,78.07,8.94,78.07L8.94,78.07z M8.94,39.03h105c4.92,0,8.94,4.02,8.94,8.94l0,0 c0,4.92-4.02,8.94-8.94,8.94h-105C4.02,56.91,0,52.89,0,47.97l0,0C0,43.06,4.02,39.03,8.94,39.03L8.94,39.03z" />
   </svg>
 )
@@ -1050,8 +1050,8 @@ export default function App() {
 
       <main className="flex-1 flex flex-col min-w-0 relative">
         <header className="flex items-center justify-between h-14 gap-3 p-2 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 z-[300]">
-          <button type="button" className="flex items-center justify-center w-10 h-10 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors" aria-label={t.appMenu} onClick={() => setUserMenuOpen((prev) => !prev)}>
-            <span className="w-6 h-6"><HamburgerIcon /></span>
+          <button type="button" className="flex items-center justify-center w-10 h-10 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors group" aria-label={t.appMenu} onClick={() => setUserMenuOpen((prev) => !prev)}>
+            <div className="w-6 h-6 flex items-center justify-center"><HamburgerIcon /></div>
           </button>
           <div className="flex-1 min-w-0" onClick={() => setShowSubtitle((prev) => !prev)} style={{ cursor: 'pointer' }}>
             <div className="text-xl font-extrabold truncate">{t.appTitle}</div>

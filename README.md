@@ -12,7 +12,8 @@ Bicly is a **Frontend-only** cycling app without login or backend.
 ## Features
 
 - Route planning with MapLibre and waypoints
-- GPX generation via BRouter
+- GPX generation via BRouter with **accurate filtered elevation stats**
+- Quick GPX export button in the header
 - Save GPX locally (no account/login needed)
 - Upload your own GPX files and manage them in your local library
 - Load routes from your local library back onto the map

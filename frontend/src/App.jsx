@@ -126,6 +126,14 @@ const MinimizeIcon = () => (
   </svg>
 )
 
+const DownloadIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+    <polyline points="7 10 12 15 17 10"></polyline>
+    <line x1="12" y1="15" x2="12" y2="3"></line>
+  </svg>
+)
+
 const TEXT = {
   en: {
     appTitle: 'Bicly', appSub: 'Ride-ready route planning with local GPX storage.', planner: 'Planner', library: 'Library',
@@ -481,10 +489,44 @@ const parseGpxStats = (gpxText, totalMass = 90) => {
 
     const scaledEnergyJoules = energyJoules * (totalMass / 90)
 
+    // BRouter provides filtered ascent which is much more accurate than raw summation
+    const searchTarget = (gpxText.slice(0, 5000) + ' ' + rawSummary).replace(/[\r\n]+/g, ' ');
+    const filteredAscendMatch = searchTarget.match(/filtered ascend\s*=\s*(-?\d+(?:\.\d+)?)/i)
+    const filteredDescendMatch = searchTarget.match(/filtered descend\s*=\s*(-?\d+(?:\.\d+)?)/i)
+    const plainAscendMatch = searchTarget.match(/plain-ascend\s*=\s*(-?\d+(?:\.\d+)?)/i)
+    const plainDescendMatch = searchTarget.match(/plain-descend\s*=\s*(-?\d+(?:\.\d+)?)/i)
+
+    let fAscentM = ascentM
+    let fDescentM = descentM
+
+    if (filteredAscendMatch) {
+      fAscentM = Math.abs(parseFloat(filteredAscendMatch[1]))
+      if (filteredDescendMatch) {
+        fDescentM = Math.abs(parseFloat(filteredDescendMatch[1]))
+      } else {
+        const firstEle = trkpts[0].ele
+        const lastEle = trkpts[trkpts.length - 1].ele
+        if (Number.isFinite(firstEle) && Number.isFinite(lastEle)) {
+          fDescentM = Math.max(0, fAscentM - (lastEle - firstEle))
+        }
+      }
+    } else if (plainAscendMatch) {
+      fAscentM = Math.max(0, parseFloat(plainAscendMatch[1]))
+      if (plainDescendMatch) {
+        fDescentM = Math.abs(parseFloat(plainDescendMatch[1]))
+      } else {
+        const firstEle = trkpts[0].ele
+        const lastEle = trkpts[trkpts.length - 1].ele
+        if (Number.isFinite(firstEle) && Number.isFinite(lastEle)) {
+          fDescentM = Math.max(0, fAscentM - (lastEle - firstEle))
+        }
+      }
+    }
+
     return {
       distanceKm: distanceMeters / 1000,
-      ascentM,
-      descentM,
+      ascentM: fAscentM,
+      descentM: fDescentM,
       travelTimeS,
       energyJoules: scaledEnergyJoules,
       bears: Math.round(scaledEnergyJoules / 33500),
@@ -1009,6 +1051,16 @@ export default function App() {
           <div className="flex items-center gap-2">
             <button type="button" className="flex items-center justify-center w-10 h-10 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors text-xl" onClick={() => setIsDarkMode(!isDarkMode)} aria-label="Toggle dark mode">
               {isDarkMode ? '🌞' : '🌙'}
+            </button>
+            <button
+              type="button"
+              className="flex items-center justify-center w-10 h-10 rounded-xl bg-blue-600 text-white hover:bg-blue-700 shadow-sm transition-all active:scale-95 disabled:opacity-50 disabled:active:scale-100"
+              onClick={downloadCurrentRoute}
+              disabled={!latestGpx}
+              title={t.downloadGpx}
+              aria-label={t.downloadGpx}
+            >
+              <span className="w-5 h-5"><DownloadIcon /></span>
             </button>
             {activePage === 'planner' && (
               <button

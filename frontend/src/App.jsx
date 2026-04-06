@@ -649,6 +649,7 @@ export default function App() {
   const [routingError, setRoutingError] = useState('')
   const [placeQuery, setPlaceQuery] = useState('')
   const [placeResults, setPlaceResults] = useState([])
+  const [showSuggestions, setShowSuggestions] = useState(false)
   const [searchingPlaces, setSearchingPlaces] = useState(false)
   const [plannerPanelOpen, setPlannerPanelOpen] = useState(false)
   const [showSubtitle, setShowSubtitle] = useState(false)
@@ -1100,13 +1101,13 @@ export default function App() {
           </div>
           <div className="relative">
             <label className={labelBase}>{t.findPlace}</label>
-            <input className={inputBase} value={placeQuery} onChange={(e) => setPlaceQuery(e.target.value)} placeholder={t.placeSearchPlaceholder} />
-            {(searchingPlaces || placeResults.length > 0 || (placeQuery.trim().length >= 3 && !placeResults.length)) && (
+            <input className={inputBase} value={placeQuery} onChange={(e) => { setPlaceQuery(e.target.value); setShowSuggestions(true); }} placeholder={t.placeSearchPlaceholder} />
+            {showSuggestions && (searchingPlaces || placeResults.length > 0 || (placeQuery.trim().length >= 3 && !placeResults.length)) && (
               <div className="absolute top-full left-0 right-0 z-[500] mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl max-h-60 overflow-y-auto">
                 {searchingPlaces && <div className="p-3 text-sm text-slate-500 animate-pulse">{t.searchingPlaces}</div>}
                 {!searchingPlaces && !placeResults.length && <div className="p-3 text-sm text-slate-500">{t.noPlacesFound}</div>}
                 {!searchingPlaces && placeResults.map((place) => (
-                  <button key={place.id} type="button" className="w-full text-left p-3 text-sm hover:bg-slate-100 dark:hover:bg-slate-700 border-b border-slate-100 dark:border-slate-700 last:border-0" onClick={() => addWaypoint(place.label, place.lon, place.lat)}>
+                  <button key={place.id} type="button" className="w-full text-left p-3 text-sm hover:bg-slate-100 dark:hover:bg-slate-700 border-b border-slate-100 dark:border-slate-700 last:border-0" onClick={() => { addWaypoint(place.label, place.lon, place.lat); setShowSuggestions(false); }}>
                     {place.label}
                   </button>
                 ))}

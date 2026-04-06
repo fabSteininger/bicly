@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  bicly:
+    build:
+      context: ./frontend
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - brouter
+    restart: always
+
+  brouter:
+    build:
+      context: https://github.com/abrensch/brouter.git#master
+    volumes:
+      - ./brouter/segments4:/segments4
+    ports:
+      - "17777:17777"
+    restart: always

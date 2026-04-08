@@ -1129,26 +1129,6 @@ export default function App() {
             <button type="button" className="flex items-center justify-center w-10 h-10 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors text-xl" onClick={() => setIsDarkMode(!isDarkMode)} aria-label="Toggle dark mode">
               {isDarkMode ? '🌞' : '🌙'}
             </button>
-            <button
-              type="button"
-              className="flex items-center justify-center w-10 h-10 rounded-xl bg-blue-600 text-white hover:bg-blue-700 shadow-sm transition-all active:scale-95 disabled:opacity-50 disabled:active:scale-100"
-              onClick={shareRoute}
-              disabled={waypoints.length < 2}
-              title={t.shareRoute}
-              aria-label={t.shareRoute}
-            >
-              <span className="w-5 h-5"><ShareIcon /></span>
-            </button>
-            <button
-              type="button"
-              className="flex items-center justify-center w-10 h-10 rounded-xl bg-blue-600 text-white hover:bg-blue-700 shadow-sm transition-all active:scale-95 disabled:opacity-50 disabled:active:scale-100"
-              onClick={downloadCurrentRoute}
-              disabled={!latestGpx}
-              title={t.downloadGpx}
-              aria-label={t.downloadGpx}
-            >
-              <span className="w-5 h-5"><DownloadIcon /></span>
-            </button>
             {activePage === 'planner' && (
               <button
                 type="button"
@@ -1261,7 +1241,10 @@ export default function App() {
           <button className={btnDanger} onClick={() => { if (window.confirm(t.confirmClear)) { setWaypoints([]); setIsExternalRoute(false); } }} disabled={waypoints.length === 0}>{t.clearPins}</button>
           <button className={btnSecondary} onClick={saveGeneratedRoute} disabled={!latestGpx}>{t.saveGenerated}</button>
           <div className="grid grid-cols-2 gap-2">
-            <button className={btnSecondary} onClick={shareRoute} disabled={waypoints.length < 2}>{t.shareRoute}</button>
+            <button className={`${btnSecondary} flex items-center justify-center gap-2`} onClick={shareRoute} disabled={waypoints.length < 2}>
+              <span className="w-4 h-4"><ShareIcon /></span>
+              {t.shareRoute}
+            </button>
             <button className={btnPrimary} onClick={downloadCurrentRoute} disabled={!latestGpx}>{t.downloadGpx}</button>
           </div>
         </div>

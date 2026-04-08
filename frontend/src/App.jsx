@@ -164,6 +164,7 @@ const TEXT = {
     openRouteDetailsSheet: 'Open route details', closeRouteDetailsSheet: 'Close route details',
     routeDetailsUnavailable: 'Generate a route to see distance and elevation details.',
     elevationFocusHint: 'Hover (desktop) or drag (touch) to highlight the matching map position.',
+    routingTimeout: 'Routing request timed out.',
     travelTime: 'Travel time',
     energy: 'Energy',
     bears: 'Gummy bears',
@@ -205,6 +206,7 @@ const TEXT = {
     openRouteDetailsSheet: 'Routendetails öffnen', closeRouteDetailsSheet: 'Routendetails schließen',
     routeDetailsUnavailable: 'Erzeuge eine Route, um Distanz- und Höhendetails zu sehen.',
     elevationFocusHint: 'Fahre mit der Maus darüber (Desktop) oder ziehe mit dem Finger, um die Kartenposition zu markieren.',
+    routingTimeout: 'Die Routenberechnung hat zu lange gedauert.',
     travelTime: 'Fahrzeit',
     energy: 'Energie',
     bears: 'Gummibärchen',
@@ -937,7 +939,7 @@ export default function App() {
       })
       .catch((err) => {
         if (err.name === 'AbortError') {
-          if (timedOut) setRoutingError('Routing request timed out.')
+          if (timedOut) setMessage(t.routingTimeout)
         } else {
           setRoutingError(err.message)
         }
@@ -1109,7 +1111,7 @@ export default function App() {
           </div>
         </header>
         {message && (
-          <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[1000] px-4 py-2 bg-blue-600 text-white rounded-full shadow-2xl animate-bounce">
+          <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[1000] px-4 py-2 bg-slate-800/90 text-white text-sm font-medium rounded-full shadow-lg backdrop-blur-sm transition-all">
             {message}
           </div>
         )}

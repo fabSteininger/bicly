@@ -244,9 +244,17 @@ const ElevationChart = ({ profile, title, legend, hoverHint, activeDistanceM, on
       tension: 0.1,
       segment: {
         borderColor: (ctx) => {
-          const point = profile[ctx.p1DataIndex]
+          const point = displayProfile[ctx.p1DataIndex]
           if (!point) return '#1f6feb'
           return point.slopeDeg >= 10 ? '#e22b2b' : point.slopeDeg >= 6 ? '#ef8f2e' : '#1f6feb'
+        },
+        backgroundColor: (ctx) => {
+          const point = displayProfile[ctx.p1DataIndex]
+          const base = isDarkMode ? 'rgba(30, 111, 235, 0.2)' : 'rgba(168, 200, 255, 0.4)'
+          if (!point) return base
+          if (point.slopeDeg >= 10) return isDarkMode ? 'rgba(226, 43, 43, 0.2)' : 'rgba(226, 43, 43, 0.4)'
+          if (point.slopeDeg >= 6) return isDarkMode ? 'rgba(239, 143, 46, 0.2)' : 'rgba(239, 143, 46, 0.4)'
+          return base
         },
       },
     }],

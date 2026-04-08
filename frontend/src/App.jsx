@@ -137,6 +137,14 @@ const DownloadIcon = () => (
   </svg>
 )
 
+const ShareIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path>
+    <polyline points="16 6 12 2 8 6"></polyline>
+    <line x1="12" y1="2" x2="12" y2="15"></line>
+  </svg>
+)
+
 const TEXT = {
   en: {
     appTitle: 'Bicly', appSub: 'Ride-ready route planning with local GPX storage.', planner: 'Planner', library: 'Library',
@@ -144,6 +152,7 @@ const TEXT = {
     confirmClear: 'Are you sure you want to delete the current route?',
     moveUp: 'Move waypoint up', moveDown: 'Move waypoint down', removeWaypoint: 'Remove waypoint',
     saveGenerated: 'Save generated GPX', routeReady: 'Route generated and shown on map.',
+    shareRoute: 'Share route', shareCopied: 'Link copied to clipboard!',
     addPinsHint: 'Click on the map to add pins. Drag and reorder on the left.',
     useLocationStart: 'Use my location as start', addMyLocation: 'my location',
     findPlace: 'Find place', placeSearchPlaceholder: 'Search city, street, or POI', noPlacesFound: 'No places found',
@@ -192,6 +201,7 @@ const TEXT = {
     searchingPlaces: 'Suche...', uploadSection: 'Route hochladen', uploadGpx: 'GPX hochladen',
     uploadRouteTitle: 'Routentitel (optional)', uploadRouteButton: 'Lokal speichern',
     noSaved: 'Noch keine gespeicherten Routen.', downloadGpx: 'GPX herunterladen', loadOnMap: 'Auf Karte laden', remove: 'Entfernen',
+    shareRoute: 'Route teilen', shareCopied: 'Link in Zwischenablage kopiert!',
     plannerHeading: 'Routenplaner', libraryHeading: 'Lokale Routenbibliothek', statusSaved: 'Route lokal gespeichert',
     statusUploaded: 'Route lokal hochgeladen', locationUnavailable: 'Standort nicht verfügbar',
     openPlanner: 'Planer öffnen', closePlanner: 'Planer schließen', cyclingMode: 'Cycling-Modus',
@@ -691,6 +701,22 @@ const ensurePoiLayers = (map, showWater, showToilets) => {
 }
 
 export default function App() {
+  const { urlWaypoints, urlProfile } = useMemo(() => {
+    const params = new URLSearchParams(window.location.search)
+    const lonlats = params.get('lonlats')
+    const profile = params.get('profile')
+    let parsedWaypoints = null
+    if (lonlats) {
+      try {
+        parsedWaypoints = lonlats.split('|').map((pair, idx) => {
+          const [lon, lat] = pair.split(',').map(Number)
+          return { id: crypto.randomUUID(), label: `Pin ${idx + 1}`, lon, lat }
+        }).filter(wp => !isNaN(wp.lon) && !isNaN(wp.lat))
+      } catch (e) { console.error('Failed to parse lonlats from URL', e) }
+    }
+    return { urlWaypoints: parsedWaypoints, urlProfile: profile }
+  }, [])
+
   const plannerDraft = useMemo(() => readPlannerDraft(), [])
   const [lang, setLang] = useState('de')
   const [totalMass, setTotalMass] = useState(() => Number(localStorage.getItem('bicly_total_mass') ?? 90))
@@ -700,9 +726,9 @@ export default function App() {
   const [map, setMap] = useState(null)
   const [userLocation, setUserLocation] = useState(null)
   const [activePage, setActivePage] = useState('planner')
-  const [waypoints, setWaypoints] = useState(() => Array.isArray(plannerDraft?.waypoints) ? plannerDraft.waypoints : [])
+  const [waypoints, setWaypoints] = useState(() => urlWaypoints || (Array.isArray(plannerDraft?.waypoints) ? plannerDraft.waypoints : []))
   const [profiles, setProfiles] = useState([])
-  const [activeProfile, setActiveProfile] = useState(() => typeof plannerDraft?.activeProfile === 'string' ? plannerDraft.activeProfile : 'trekking')
+  const [activeProfile, setActiveProfile] = useState(() => urlProfile || (typeof plannerDraft?.activeProfile === 'string' ? plannerDraft.activeProfile : 'trekking'))
   const [latestGpx, setLatestGpx] = useState(() => typeof plannerDraft?.latestGpx === 'string' ? plannerDraft.latestGpx : '')
   const [routeGeoJson, setRouteGeoJson] = useState(() => plannerDraft?.routeGeoJson?.type === 'FeatureCollection' ? plannerDraft.routeGeoJson : emptyRouteGeoJson)
   const [title, setTitle] = useState(() => typeof plannerDraft?.title === 'string' ? plannerDraft.title : 'New Route')
@@ -783,6 +809,12 @@ export default function App() {
       showRouteDetails,
     }))
   }, [waypoints, activeProfile, latestGpx, routeGeoJson, title, routeStats, showRouteDetails])
+
+  useEffect(() => {
+    if (urlWaypoints || urlProfile) {
+      window.history.replaceState({}, document.title, window.location.pathname)
+    }
+  }, [urlWaypoints, urlProfile])
 
 
   const addWaypoint = (label, lon, lat) => {
@@ -994,6 +1026,17 @@ export default function App() {
     setMessage(t.statusUploaded)
   }
 
+  const shareRoute = () => {
+    if (waypoints.length < 2) return
+    const params = new URLSearchParams()
+    params.set('lonlats', brouterPoints)
+    params.set('profile', activeProfile)
+    const shareUrl = `${window.location.origin}${window.location.pathname}?${params.toString()}`
+    navigator.clipboard.writeText(shareUrl)
+      .then(() => setMessage(t.shareCopied))
+      .catch((err) => console.error('Failed to copy URL', err))
+  }
+
   const downloadCurrentRoute = () => {
     if (!latestGpx) return
     const fullGpx = injectWaypointsToGpx(latestGpx, waypoints)
@@ -1085,6 +1128,16 @@ export default function App() {
           <div className="flex items-center gap-2">
             <button type="button" className="flex items-center justify-center w-10 h-10 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors text-xl" onClick={() => setIsDarkMode(!isDarkMode)} aria-label="Toggle dark mode">
               {isDarkMode ? '🌞' : '🌙'}
+            </button>
+            <button
+              type="button"
+              className="flex items-center justify-center w-10 h-10 rounded-xl bg-blue-600 text-white hover:bg-blue-700 shadow-sm transition-all active:scale-95 disabled:opacity-50 disabled:active:scale-100"
+              onClick={shareRoute}
+              disabled={waypoints.length < 2}
+              title={t.shareRoute}
+              aria-label={t.shareRoute}
+            >
+              <span className="w-5 h-5"><ShareIcon /></span>
             </button>
             <button
               type="button"
@@ -1207,7 +1260,10 @@ export default function App() {
           <button className={btnSecondary} onClick={() => { if (userLocation) addWaypoint(t.addMyLocation, userLocation.lon, userLocation.lat); }} disabled={!userLocation}>{t.addMyLocation}</button>
           <button className={btnDanger} onClick={() => { if (window.confirm(t.confirmClear)) { setWaypoints([]); setIsExternalRoute(false); } }} disabled={waypoints.length === 0}>{t.clearPins}</button>
           <button className={btnSecondary} onClick={saveGeneratedRoute} disabled={!latestGpx}>{t.saveGenerated}</button>
-          <button className={btnPrimary} onClick={downloadCurrentRoute} disabled={!latestGpx}>{t.downloadGpx}</button>
+          <div className="grid grid-cols-2 gap-2">
+            <button className={btnSecondary} onClick={shareRoute} disabled={waypoints.length < 2}>{t.shareRoute}</button>
+            <button className={btnPrimary} onClick={downloadCurrentRoute} disabled={!latestGpx}>{t.downloadGpx}</button>
+          </div>
         </div>
       </aside></section>}
 

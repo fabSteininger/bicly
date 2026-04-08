@@ -79,6 +79,9 @@ const TOILET_LAYER_ID = 'poi-toilet-highlight'
 const STORAGE_KEY = 'bicly_saved_routes'
 const PLANNER_DRAFT_KEY = 'bicly_planner_draft'
 
+const PRIVACY_CONTENT = import.meta.env.VITE_PRIVACY_CONTENT || ''
+const IMPRESSUM_CONTENT = import.meta.env.VITE_IMPRESSUM_CONTENT || ''
+
 const emptyRouteGeoJson = { type: 'FeatureCollection', features: [] }
 
 const emptyRouteStats = { distanceKm: 0, ascentM: 0, descentM: 0, rawSummary: '', elevationProfile: [] }
@@ -913,6 +916,11 @@ export default function App() {
     if (isExternalRoute) return
 
     const controller = new AbortController()
+    let timedOut = false
+    const timeoutId = setTimeout(() => {
+      timedOut = true
+      controller.abort()
+    }, 15000)
 
     setRoutingError('')
     fetchBrouterRoute({
@@ -925,13 +933,20 @@ export default function App() {
         setLatestGpx(text)
         setRouteGeoJson(parseGpxToGeoJson(text))
         setRouteStats(parseGpxStats(text, totalMass))
+        setMessage(t.routeReady)
       })
       .catch((err) => {
-        if (err.name !== 'AbortError') {
+        if (err.name === 'AbortError') {
+          if (timedOut) setRoutingError('Routing request timed out.')
+        } else {
           setRoutingError(err.message)
         }
       })
-    return () => controller.abort()
+      .finally(() => clearTimeout(timeoutId))
+    return () => {
+      controller.abort()
+      clearTimeout(timeoutId)
+    }
   }, [activeProfile, brouterPoints, waypoints.length, isExternalRoute, totalMass])
 
 
@@ -1192,7 +1207,6 @@ export default function App() {
           <button className={btnSecondary} onClick={saveGeneratedRoute} disabled={!latestGpx}>{t.saveGenerated}</button>
           <button className={btnPrimary} onClick={downloadCurrentRoute} disabled={!latestGpx}>{t.downloadGpx}</button>
         </div>
-        {latestGpx && <p className="status info inline">{t.routeReady}</p>}
       </aside></section>}
 
       {activePage === 'library' && <section className="flex-1 overflow-y-auto p-4 md:p-8 max-w-5xl mx-auto w-full flex flex-col gap-6">
@@ -1229,9 +1243,13 @@ export default function App() {
       {activePage === 'privacy' && <section className="flex-1 overflow-y-auto p-4 md:p-8 max-w-3xl mx-auto w-full flex flex-col gap-6">
         <div className="p-8 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-3xl shadow-sm flex flex-col gap-4">
           <h2 className="text-3xl font-bold mb-4">{t.privacyHeading}</h2>
-          <p>We process route planning data only in your browser and keep your saved GPX files in local storage on this device.</p>
-          <p>When generating routes and searching places, requests are sent to external services (BRouter and Nominatim/OpenStreetMap) to return route and search results.</p>
-          <p>No account is required and no central profile storage is used in this demo.</p>
+          {PRIVACY_CONTENT ? PRIVACY_CONTENT.split('|').map((p, i) => <p key={i}>{p.trim()}</p>) : (
+            <>
+              <p>We process route planning data only in your browser and keep your saved GPX files in local storage on this device.</p>
+              <p>When generating routes and searching places, requests are sent to external services (BRouter and Nominatim/OpenStreetMap) to return route and search results.</p>
+              <p>No account is required and no central profile storage is used in this demo.</p>
+            </>
+          )}
         </div>
       </section>}
 
@@ -1266,10 +1284,14 @@ export default function App() {
       {activePage === 'impressum' && <section className="flex-1 overflow-y-auto p-4 md:p-8 max-w-3xl mx-auto w-full flex flex-col gap-6">
         <div className="p-8 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-3xl shadow-sm flex flex-col gap-4">
           <h2 className="text-3xl font-bold mb-4">{t.impressumHeading}</h2>
-          <p>Bicly demo application.</p>
-          <p>Responsible for content: Bicly Project Team.</p>
-          <p>Contact: hello@bicly.local</p>
-          <p>Address: Example Street 1, 12345 Demo City</p>
+          {IMPRESSUM_CONTENT ? IMPRESSUM_CONTENT.split('|').map((p, i) => <p key={i}>{p.trim()}</p>) : (
+            <>
+              <p>Bicly demo application.</p>
+              <p>Responsible for content: Bicly Project Team.</p>
+              <p>Contact: hello@bicly.local</p>
+              <p>Address: Example Street 1, 12345 Demo City</p>
+            </>
+          )}
         </div>
       </section>}
       </main>

@@ -1129,6 +1129,16 @@ export default function App() {
             <button type="button" className="flex items-center justify-center w-10 h-10 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors text-xl" onClick={() => setIsDarkMode(!isDarkMode)} aria-label="Toggle dark mode">
               {isDarkMode ? '🌞' : '🌙'}
             </button>
+            <button
+              type="button"
+              className="flex items-center justify-center w-10 h-10 rounded-xl bg-blue-600 text-white hover:bg-blue-700 shadow-sm transition-all active:scale-95 disabled:opacity-50 disabled:active:scale-100"
+              onClick={downloadCurrentRoute}
+              disabled={!latestGpx}
+              title={t.downloadGpx}
+              aria-label={t.downloadGpx}
+            >
+              <span className="w-5 h-5"><DownloadIcon /></span>
+            </button>
             {activePage === 'planner' && (
               <button
                 type="button"

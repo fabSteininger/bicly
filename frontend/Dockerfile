@@ -15,6 +15,22 @@ COPY nginx.conf /etc/nginx/conf.d/default.conf
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
+# Install logrotate and setup cron
+RUN apk add --no-cache logrotate && \
+    mkdir -p /var/log/brouter && \
+    rm -f /var/log/nginx/access.log /var/log/nginx/error.log
+
+# Configure logrotate
+RUN echo -e "/var/log/nginx/*.log /var/log/brouter/*.log {\n\
+    daily\n\
+    rotate 30\n\
+    missingok\n\
+    notifempty\n\
+    compress\n\
+    delaycompress\n\
+    copytruncate\n\
+}" > /etc/logrotate.d/bicly
+
 # SSL configuration
 RUN apk add --no-cache openssl && \
     mkdir -p /etc/nginx/ssl && \

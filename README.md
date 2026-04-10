@@ -5,6 +5,7 @@ Bicly is a **Frontend-only** cycling app without login or backend.
 ## Stack
 
 - **Frontend**: React + Vite + MapLibre GL
+- **Map Tiles**: OpenFreeMap (Dark/Light)
 - **Routing**: Direct via public BRouter (`https://brouter.de/brouter`)
 - **Geocoding**: Nominatim search
 - **Storage**: Local browser storage (`localStorage`)
@@ -13,6 +14,9 @@ Bicly is a **Frontend-only** cycling app without login or backend.
 
 - Route planning with MapLibre and waypoints
 - GPX generation via BRouter with **accurate filtered elevation stats**
+- Elevation profile with slope-based coloring and interactive hover
+- Route statistics including travel time, energy consumption, and **Gummibärchen count** 🧸
+- Toggleable Points of Interest (Drinking water, Toilets)
 - Quick GPX export button in the header
 - Save GPX locally (no account/login needed)
 - Upload your own GPX files and manage them in your local library
@@ -55,6 +59,12 @@ Bicly can be started together with a local BRouter instance using Docker Compose
    ```
 3. **Access Bicly:**
    The app is available at `http://localhost` (port 80) and `https://localhost` (port 443).
+
+### Customizing Legal Content (Docker)
+You can customize the Privacy Policy and Impressum in the Docker container in two ways:
+
+- **Environment Variables:** Set `PRIVACY_MD` and `IMPRESSUM_MD` in `docker-compose.yml`.
+- **Volume Mounts:** Uncomment the `volumes` section in `docker-compose.yml` and provide your own `privacy.md` and `impressum.md` files in the root directory.
 
 ## Static Hosting
 

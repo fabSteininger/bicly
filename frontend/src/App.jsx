@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import ReactMarkdown from 'react-markdown'
 import maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import {
@@ -78,9 +79,6 @@ const WATER_LAYER_ID = 'poi-water-highlight'
 const TOILET_LAYER_ID = 'poi-toilet-highlight'
 const STORAGE_KEY = 'bicly_saved_routes'
 const PLANNER_DRAFT_KEY = 'bicly_planner_draft'
-
-const PRIVACY_CONTENT = import.meta.env.VITE_PRIVACY_CONTENT || ''
-const IMPRESSUM_CONTENT = import.meta.env.VITE_IMPRESSUM_CONTENT || ''
 
 const emptyRouteGeoJson = { type: 'FeatureCollection', features: [] }
 
@@ -748,6 +746,8 @@ export default function App() {
   const [routeStats, setRouteStats] = useState(() => plannerDraft?.routeStats?.elevationProfile ? plannerDraft.routeStats : emptyRouteStats)
   const [activeElevationPoint, setActiveElevationPoint] = useState(null)
   const [isExternalRoute, setIsExternalRoute] = useState(false)
+  const [privacyMd, setPrivacyMd] = useState('')
+  const [impressumMd, setImpressumMd] = useState('')
   const hasInitialFit = useRef(false)
 
   const showDrinkingWaterRef = useRef(showDrinkingWater)
@@ -815,6 +815,11 @@ export default function App() {
       window.history.replaceState({}, document.title, window.location.pathname)
     }
   }, [urlWaypoints, urlProfile])
+
+  useEffect(() => {
+    fetch('/privacy.md').then(r => r.text()).then(setPrivacyMd).catch(console.error)
+    fetch('/impressum.md').then(r => r.text()).then(setImpressumMd).catch(console.error)
+  }, [])
 
 
   const addWaypoint = (label, lon, lat) => {
@@ -1294,13 +1299,9 @@ export default function App() {
       {activePage === 'privacy' && <section className="flex-1 overflow-y-auto p-4 md:p-8 max-w-3xl mx-auto w-full flex flex-col gap-6">
         <div className="p-8 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-3xl shadow-sm flex flex-col gap-4">
           <h2 className="text-3xl font-bold mb-4">{t.privacyHeading}</h2>
-          {PRIVACY_CONTENT ? PRIVACY_CONTENT.split('|').map((p, i) => <p key={i}>{p.trim()}</p>) : (
-            <>
-              <p>We process route planning data only in your browser and keep your saved GPX files in local storage on this device.</p>
-              <p>When generating routes and searching places, requests are sent to external services (BRouter and Nominatim/OpenStreetMap) to return route and search results.</p>
-              <p>No account is required and no central profile storage is used in this demo.</p>
-            </>
-          )}
+          <article className="prose dark:prose-invert max-w-none">
+            <ReactMarkdown>{privacyMd}</ReactMarkdown>
+          </article>
         </div>
       </section>}
 
@@ -1335,14 +1336,9 @@ export default function App() {
       {activePage === 'impressum' && <section className="flex-1 overflow-y-auto p-4 md:p-8 max-w-3xl mx-auto w-full flex flex-col gap-6">
         <div className="p-8 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-3xl shadow-sm flex flex-col gap-4">
           <h2 className="text-3xl font-bold mb-4">{t.impressumHeading}</h2>
-          {IMPRESSUM_CONTENT ? IMPRESSUM_CONTENT.split('|').map((p, i) => <p key={i}>{p.trim()}</p>) : (
-            <>
-              <p>Bicly demo application.</p>
-              <p>Responsible for content: Bicly Project Team.</p>
-              <p>Contact: hello@bicly.local</p>
-              <p>Address: Example Street 1, 12345 Demo City</p>
-            </>
-          )}
+          <article className="prose dark:prose-invert max-w-none">
+            <ReactMarkdown>{impressumMd}</ReactMarkdown>
+          </article>
         </div>
       </section>}
       </main>

@@ -6,8 +6,9 @@ services:
       context: ./frontend
       args:
         - VITE_BROUTER_DIRECT_URL=/brouter
-        - VITE_PRIVACY_CONTENT=Add your privacy policy here.|Second paragraph.
-        - VITE_IMPRESSUM_CONTENT=Add your impressum here.|Second paragraph.
+    environment:
+      - PRIVACY_MD=Add your privacy policy here.\n\nSecond paragraph.
+      - IMPRESSUM_MD=Add your impressum here.\n\nSecond paragraph.
     ports:
       - "80:80"
       - "443:443"

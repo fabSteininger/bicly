@@ -33,13 +33,35 @@ test('Verify elevation parsing and header download button', async ({ page }) => 
   await page.waitForTimeout(5000); // Wait for route generation
 
   // Verify elevation stats show filtered values
-  console.log('Page content sample:', await page.innerText('body'));
+  const details = await page.innerText('body');
+  expect(details).toContain('Anstieg: 150 m');
+  expect(details).toContain('Abstieg: 100 m');
 
   // Verify Header Download button
-  // Localized label for German (de)
   const downloadBtn = page.locator('header button').filter({ has: page.locator('svg') }).first();
   await expect(downloadBtn).toBeVisible();
+});
 
-  // Take screenshot
-  await page.screenshot({ path: 'test-results/elevation_fix.png', fullPage: true });
+test('Verify privacy and impressum markdown rendering', async ({ page }) => {
+  await page.goto('http://localhost:3000', { waitUntil: 'networkidle' });
+
+  // Open App Menu
+  await page.getByLabel('App-Menü').click();
+
+  // Go to Privacy Policy
+  await page.getByRole('button', { name: 'Datenschutz' }).click();
+
+  // Verify privacy content (from public/privacy.md)
+  await expect(page.locator('h2')).toContainText('Datenschutzerklärung');
+  await expect(page.locator('article')).toContainText('We process route planning data only in your browser');
+
+  // Open App Menu again
+  await page.getByLabel('App-Menü').click();
+
+  // Go to Impressum
+  await page.getByRole('button', { name: 'Impressum' }).click();
+
+  // Verify impressum content (from public/impressum.md)
+  await expect(page.locator('h2')).toContainText('Impressum');
+  await expect(page.locator('article')).toContainText('Bicly demo application');
 });

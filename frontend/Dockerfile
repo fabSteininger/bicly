@@ -6,16 +6,14 @@ RUN npm install
 COPY . .
 ARG VITE_BROUTER_DIRECT_URL=/brouter
 ENV VITE_BROUTER_DIRECT_URL=$VITE_BROUTER_DIRECT_URL
-ARG VITE_PRIVACY_CONTENT
-ENV VITE_PRIVACY_CONTENT=$VITE_PRIVACY_CONTENT
-ARG VITE_IMPRESSUM_CONTENT
-ENV VITE_IMPRESSUM_CONTENT=$VITE_IMPRESSUM_CONTENT
 RUN npm run build
 
 # Serve stage
 FROM nginx:alpine
 COPY --from=build /app/dist /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 
 # SSL configuration
 RUN apk add --no-cache openssl && \
@@ -25,4 +23,5 @@ RUN apk add --no-cache openssl && \
     -subj "/C=DE/ST=Bavaria/L=Munich/O=Bicly/CN=localhost"
 
 EXPOSE 80 443
+ENTRYPOINT ["/entrypoint.sh"]
 CMD ["nginx", "-g", "daemon off;"]

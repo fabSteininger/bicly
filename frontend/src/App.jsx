@@ -954,7 +954,7 @@ export default function App() {
     const timeoutId = setTimeout(() => {
       timedOut = true
       controller.abort()
-    }, 15000)
+    }, 60000)
 
     setRoutingError('')
     fetchBrouterRoute({

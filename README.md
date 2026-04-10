@@ -1,12 +1,12 @@
 # Bicly
 
-Bicly is a **Frontend-only** cycling app without login or backend.
+Bicly is a privacy first cycling app without login.
 
 ## Stack
 
 - **Frontend**: React + Vite + MapLibre GL
 - **Map Tiles**: OpenFreeMap (Dark/Light)
-- **Routing**: Direct via public BRouter (`https://brouter.de/brouter`)
+- **Routing**: Direct via public or selfhosted BRouter (`https://brouter.de/brouter`)
 - **Geocoding**: Nominatim search
 - **Storage**: Local browser storage (`localStorage`)
 
@@ -92,7 +92,7 @@ The app can be easily run on the following platforms (and many others):
 The default API at `brouter.de` is primarily for testing. For production use, it is strongly recommended to run your own BRouter instance on a VPS or dedicated server.
 
 **Hardware Requirements (for operation):**
-- **Storage:** approx. **50 GB** for `.rd5` routing data for the entire world.
+- **Storage:** approx. **20 GB** for `.rd5` routing data for the entire world.
 - **RAM:** At least **512 MB**.
 - **CPU:** A single CPU core is sufficient.
 

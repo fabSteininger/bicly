@@ -12,6 +12,8 @@ services:
     # volumes:
     #   - ./privacy.md:/usr/share/nginx/html/privacy.md
     #   - ./impressum.md:/usr/share/nginx/html/impressum.md
+    volumes:
+      - brouter_logs:/var/log/brouter
     ports:
       - "80:80"
       - "443:443"
@@ -23,6 +25,11 @@ services:
     image: ghcr.io/abrensch/brouter:latest
     volumes:
       - ./brouter/segments4:/segments4
+      - brouter_logs:/var/log/brouter
+    entrypoint: ["/bin/sh", "-c", "/brouter/server.sh 2>&1 | tee -a /var/log/brouter/brouter.log"]
     ports:
       - "17777:17777"
     restart: always
+
+volumes:
+  brouter_logs:

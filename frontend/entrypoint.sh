@@ -12,4 +12,7 @@ if [ -n "$IMPRESSUM_MD" ]; then
     echo "$IMPRESSUM_MD" > /usr/share/nginx/html/impressum.md
 fi
 
+# Start crond for logrotate
+crond
+
 exec "$@"

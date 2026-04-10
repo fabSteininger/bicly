@@ -9,6 +9,9 @@ services:
     environment:
       - PRIVACY_MD=Add your privacy policy here.\n\nSecond paragraph.
       - IMPRESSUM_MD=Add your impressum here.\n\nSecond paragraph.
+    # volumes:
+    #   - ./privacy.md:/usr/share/nginx/html/privacy.md
+    #   - ./impressum.md:/usr/share/nginx/html/impressum.md
     ports:
       - "80:80"
       - "443:443"

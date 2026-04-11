@@ -780,18 +780,28 @@ export default function App() {
   }, [isDarkMode])
 
   useEffect(() => {
-    localStorage.setItem('bicly_total_mass', totalMass.toString())
+    try {
+      localStorage.setItem('bicly_total_mass', totalMass.toString())
+    } catch (e) { console.error('Failed to save total_mass', e) }
   }, [totalMass])
 
   useEffect(() => {
-    localStorage.setItem('bicly_show_drinking_water', showDrinkingWater.toString())
+    try {
+      localStorage.setItem('bicly_show_drinking_water', showDrinkingWater.toString())
+    } catch (e) { console.error('Failed to save show_drinking_water', e) }
   }, [showDrinkingWater])
 
   useEffect(() => {
-    localStorage.setItem('bicly_show_toilets', showToilets.toString())
+    try {
+      localStorage.setItem('bicly_show_toilets', showToilets.toString())
+    } catch (e) { console.error('Failed to save show_toilets', e) }
   }, [showToilets])
 
-  useEffect(() => { localStorage.setItem(STORAGE_KEY, JSON.stringify(savedRoutes)) }, [savedRoutes])
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(savedRoutes))
+    } catch (e) { console.error('Failed to save saved_routes', e) }
+  }, [savedRoutes])
   useEffect(() => {
     loadProfiles().then((rows) => {
       setProfiles(rows)
@@ -803,15 +813,32 @@ export default function App() {
   }, [])
 
   useEffect(() => {
-    localStorage.setItem(PLANNER_DRAFT_KEY, JSON.stringify({
-      waypoints,
-      activeProfile,
-      latestGpx,
-      routeGeoJson,
-      title,
-      routeStats,
-      showRouteDetails,
-    }))
+    try {
+      localStorage.setItem(PLANNER_DRAFT_KEY, JSON.stringify({
+        waypoints,
+        activeProfile,
+        latestGpx,
+        routeGeoJson,
+        title,
+        routeStats,
+        showRouteDetails,
+      }))
+    } catch (e) {
+      console.error('Failed to save planner_draft to localStorage', e)
+      if (e.name === 'QuotaExceededError') {
+        // Fallback: try saving without the bulky latestGpx and routeGeoJson if it fails
+        try {
+          localStorage.setItem(PLANNER_DRAFT_KEY, JSON.stringify({
+            waypoints,
+            activeProfile,
+            title,
+            showRouteDetails,
+          }))
+        } catch (e2) {
+          console.error('Even minimal draft failed to save', e2)
+        }
+      }
+    }
   }, [waypoints, activeProfile, latestGpx, routeGeoJson, title, routeStats, showRouteDetails])
 
   useEffect(() => {

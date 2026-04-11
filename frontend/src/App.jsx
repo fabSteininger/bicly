@@ -981,10 +981,10 @@ export default function App() {
       .catch((err) => {
         if (err.name === 'AbortError') {
           if (timedOut) setMessage(t.routingTimeout)
-        } else if (err.status === 524) {
+        } else if (err.status === 524 || err.status === 504) {
           setMessage(t.routingTimeout)
         } else {
-          setRoutingError(err.message)
+          setRoutingError(err.message.slice(0, 500))
           setMessage(t.unknownError)
         }
       })

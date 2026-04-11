@@ -13,7 +13,9 @@ export const fetchBrouterRoute = async ({ profile, points, signal, totalMass }) 
   const res = await fetch(`${BROUTER_DIRECT_URL}?${params.toString()}`, { signal })
   if (!res.ok) {
     const errorText = await res.text()
-    throw new Error(errorText || `BRouter request failed (${res.status})`)
+    const error = new Error(errorText || `BRouter request failed (${res.status})`)
+    error.status = res.status
+    throw error
   }
   return res.text()
 }

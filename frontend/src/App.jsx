@@ -890,12 +890,6 @@ export default function App() {
     }
   }, [activePage])
 
-  useEffect(() => {
-    if (message) {
-      const timer = setTimeout(() => setMessage(''), 3000)
-      return () => clearTimeout(timer)
-    }
-  }, [message])
 
   useEffect(() => {
     if (!map || hasInitialFit.current) return
@@ -1169,8 +1163,16 @@ export default function App() {
           </div>
         </header>
         {message && (
-          <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[1000] px-4 py-2 bg-slate-800/90 text-white text-sm font-medium rounded-full shadow-lg backdrop-blur-sm transition-all">
-            {message}
+          <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[1000] flex items-center gap-3 pl-4 pr-2 py-2 bg-slate-800/90 text-white text-sm font-medium rounded-full shadow-lg backdrop-blur-sm animate-in fade-in slide-in-from-bottom-4 duration-300">
+            <span>{message}</span>
+            <button
+              type="button"
+              className="w-6 h-6 flex items-center justify-center rounded-full hover:bg-white/20 transition-colors"
+              onClick={() => setMessage('')}
+              aria-label="Dismiss"
+            >
+              ✕
+            </button>
           </div>
         )}
 

@@ -172,6 +172,8 @@ const TEXT = {
     routeDetailsUnavailable: 'Generate a route to see distance and elevation details.',
     elevationFocusHint: 'Hover (desktop) or drag (touch) to highlight the matching map position.',
     routingTimeout: 'Routing request timed out.',
+    unknownError: 'An unknown error occurred during routing.',
+    searchError: 'Place search failed.',
     travelTime: 'Travel time',
     energy: 'Energy',
     bears: 'Gummy bears',
@@ -215,6 +217,8 @@ const TEXT = {
     routeDetailsUnavailable: 'Erzeuge eine Route, um Distanz- und Höhendetails zu sehen.',
     elevationFocusHint: 'Fahre mit der Maus darüber (Desktop) oder ziehe mit dem Finger, um die Kartenposition zu markieren.',
     routingTimeout: 'Die Routenberechnung hat zu lange gedauert.',
+    unknownError: 'Ein unbekannter Fehler ist bei der Routenberechnung aufgetreten.',
+    searchError: 'Ortssuche fehlgeschlagen.',
     travelTime: 'Fahrzeit',
     energy: 'Energie',
     bears: 'Gummibärchen',
@@ -981,6 +985,7 @@ export default function App() {
           setMessage(t.routingTimeout)
         } else {
           setRoutingError(err.message)
+          setMessage(t.unknownError)
         }
       })
       .finally(() => clearTimeout(timeoutId))
@@ -1011,7 +1016,10 @@ export default function App() {
       fetch(`https://nominatim.openstreetmap.org/search?${params.toString()}`, { signal: controller.signal, headers: { 'Accept-Language': lang === 'de' ? 'de,en' : 'en,de' } })
         .then((res) => res.ok ? res.json() : Promise.reject(new Error('search failed')))
         .then((rows) => setPlaceResults((Array.isArray(rows) ? rows : []).map((r) => ({ id: `${r.place_id}`, label: r.display_name, lon: Number(r.lon), lat: Number(r.lat) })).filter((r) => Number.isFinite(r.lon) && Number.isFinite(r.lat))))
-        .catch(() => setPlaceResults([]))
+        .catch((err) => {
+          setPlaceResults([])
+          if (err.name !== 'AbortError') setMessage(t.searchError)
+        })
         .finally(() => setSearchingPlaces(false))
     }, 280)
     return () => { clearTimeout(timer); controller.abort() }

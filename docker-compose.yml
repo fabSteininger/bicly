@@ -6,13 +6,9 @@ services:
       context: ./frontend
       args:
         - VITE_BROUTER_DIRECT_URL=/brouter
-    environment:
-      - PRIVACY_MD=Add your privacy policy here.\n\nSecond paragraph.
-      - IMPRESSUM_MD=Add your impressum here.\n\nSecond paragraph.
-    # volumes:
-    #   - ./privacy.md:/usr/share/nginx/html/privacy.md
-    #   - ./impressum.md:/usr/share/nginx/html/impressum.md
     volumes:
+      - ./Privacy/privacy.md:/usr/share/nginx/html/privacy.md
+      - ./Privacy/imprint.md:/usr/share/nginx/html/impressum.md
       - brouter_logs:/var/log/brouter
     ports:
       - "80:80"

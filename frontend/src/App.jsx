@@ -977,6 +977,8 @@ export default function App() {
       .catch((err) => {
         if (err.name === 'AbortError') {
           if (timedOut) setMessage(t.routingTimeout)
+        } else if (err.status === 524) {
+          setMessage(t.routingTimeout)
         } else {
           setRoutingError(err.message)
         }

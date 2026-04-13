@@ -172,6 +172,8 @@ const TEXT = {
     routeDetailsUnavailable: 'Generate a route to see distance and elevation details.',
     elevationFocusHint: 'Hover (desktop) or drag (touch) to highlight the matching map position.',
     routingTimeout: 'Routing request timed out.',
+    unknownError: 'An unknown error occurred during routing.',
+    searchError: 'Place search failed.',
     travelTime: 'Travel time',
     energy: 'Energy',
     bears: 'Gummy bears',
@@ -215,6 +217,8 @@ const TEXT = {
     routeDetailsUnavailable: 'Erzeuge eine Route, um Distanz- und Höhendetails zu sehen.',
     elevationFocusHint: 'Fahre mit der Maus darüber (Desktop) oder ziehe mit dem Finger, um die Kartenposition zu markieren.',
     routingTimeout: 'Die Routenberechnung hat zu lange gedauert.',
+    unknownError: 'Ein unbekannter Fehler ist bei der Routenberechnung aufgetreten.',
+    searchError: 'Ortssuche fehlgeschlagen.',
     travelTime: 'Fahrzeit',
     energy: 'Energie',
     bears: 'Gummibärchen',
@@ -776,18 +780,28 @@ export default function App() {
   }, [isDarkMode])
 
   useEffect(() => {
-    localStorage.setItem('bicly_total_mass', totalMass.toString())
+    try {
+      localStorage.setItem('bicly_total_mass', totalMass.toString())
+    } catch (e) { console.error('Failed to save total_mass', e) }
   }, [totalMass])
 
   useEffect(() => {
-    localStorage.setItem('bicly_show_drinking_water', showDrinkingWater.toString())
+    try {
+      localStorage.setItem('bicly_show_drinking_water', showDrinkingWater.toString())
+    } catch (e) { console.error('Failed to save show_drinking_water', e) }
   }, [showDrinkingWater])
 
   useEffect(() => {
-    localStorage.setItem('bicly_show_toilets', showToilets.toString())
+    try {
+      localStorage.setItem('bicly_show_toilets', showToilets.toString())
+    } catch (e) { console.error('Failed to save show_toilets', e) }
   }, [showToilets])
 
-  useEffect(() => { localStorage.setItem(STORAGE_KEY, JSON.stringify(savedRoutes)) }, [savedRoutes])
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(savedRoutes))
+    } catch (e) { console.error('Failed to save saved_routes', e) }
+  }, [savedRoutes])
   useEffect(() => {
     loadProfiles().then((rows) => {
       setProfiles(rows)
@@ -799,15 +813,32 @@ export default function App() {
   }, [])
 
   useEffect(() => {
-    localStorage.setItem(PLANNER_DRAFT_KEY, JSON.stringify({
-      waypoints,
-      activeProfile,
-      latestGpx,
-      routeGeoJson,
-      title,
-      routeStats,
-      showRouteDetails,
-    }))
+    try {
+      localStorage.setItem(PLANNER_DRAFT_KEY, JSON.stringify({
+        waypoints,
+        activeProfile,
+        latestGpx,
+        routeGeoJson,
+        title,
+        routeStats,
+        showRouteDetails,
+      }))
+    } catch (e) {
+      console.error('Failed to save planner_draft to localStorage', e)
+      if (e.name === 'QuotaExceededError') {
+        // Fallback: try saving without the bulky latestGpx and routeGeoJson if it fails
+        try {
+          localStorage.setItem(PLANNER_DRAFT_KEY, JSON.stringify({
+            waypoints,
+            activeProfile,
+            title,
+            showRouteDetails,
+          }))
+        } catch (e2) {
+          console.error('Even minimal draft failed to save', e2)
+        }
+      }
+    }
   }, [waypoints, activeProfile, latestGpx, routeGeoJson, title, routeStats, showRouteDetails])
 
   useEffect(() => {
@@ -886,12 +917,6 @@ export default function App() {
     }
   }, [activePage])
 
-  useEffect(() => {
-    if (message) {
-      const timer = setTimeout(() => setMessage(''), 3000)
-      return () => clearTimeout(timer)
-    }
-  }, [message])
 
   useEffect(() => {
     if (!map || hasInitialFit.current) return
@@ -977,10 +1002,11 @@ export default function App() {
       .catch((err) => {
         if (err.name === 'AbortError') {
           if (timedOut) setMessage(t.routingTimeout)
-        } else if (err.status === 524) {
+        } else if (err.status === 524 || err.status === 504) {
           setMessage(t.routingTimeout)
         } else {
-          setRoutingError(err.message)
+          setRoutingError(err.message.slice(0, 500))
+          setMessage(t.unknownError)
         }
       })
       .finally(() => clearTimeout(timeoutId))
@@ -1011,7 +1037,10 @@ export default function App() {
       fetch(`https://nominatim.openstreetmap.org/search?${params.toString()}`, { signal: controller.signal, headers: { 'Accept-Language': lang === 'de' ? 'de,en' : 'en,de' } })
         .then((res) => res.ok ? res.json() : Promise.reject(new Error('search failed')))
         .then((rows) => setPlaceResults((Array.isArray(rows) ? rows : []).map((r) => ({ id: `${r.place_id}`, label: r.display_name, lon: Number(r.lon), lat: Number(r.lat) })).filter((r) => Number.isFinite(r.lon) && Number.isFinite(r.lat))))
-        .catch(() => setPlaceResults([]))
+        .catch((err) => {
+          setPlaceResults([])
+          if (err.name !== 'AbortError') setMessage(t.searchError)
+        })
         .finally(() => setSearchingPlaces(false))
     }, 280)
     return () => { clearTimeout(timer); controller.abort() }
@@ -1161,8 +1190,16 @@ export default function App() {
           </div>
         </header>
         {message && (
-          <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[1000] px-4 py-2 bg-slate-800/90 text-white text-sm font-medium rounded-full shadow-lg backdrop-blur-sm transition-all">
-            {message}
+          <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[1000] flex items-center gap-3 pl-4 pr-2 py-2 bg-slate-800/90 text-white text-sm font-medium rounded-full shadow-lg backdrop-blur-sm animate-in fade-in slide-in-from-bottom-4 duration-300">
+            <span>{message}</span>
+            <button
+              type="button"
+              className="w-6 h-6 flex items-center justify-center rounded-full hover:bg-white/20 transition-colors"
+              onClick={() => setMessage('')}
+              aria-label="Dismiss"
+            >
+              ✕
+            </button>
           </div>
         )}
 

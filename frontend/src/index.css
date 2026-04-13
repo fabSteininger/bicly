@@ -1,10 +1,15 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+
+@theme {
+  --radius: 8px;
+}
 
 @layer base {
   html, body, #root {
-    @apply h-full m-0 overflow-hidden;
+    height: 100%;
+    margin: 0;
+    overflow: hidden;
   }
 }
 

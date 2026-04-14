@@ -82,7 +82,7 @@ const PLANNER_DRAFT_KEY = 'bicly_planner_draft'
 
 const emptyRouteGeoJson = { type: 'FeatureCollection', features: [] }
 
-const emptyRouteStats = { distanceKm: 0, ascentM: 0, descentM: 0, rawSummary: '', elevationProfile: [] }
+const emptyRouteStats = { distanceKm: 0, ascentM: 0, descentM: 0, rawSummary: '', elevationProfile: [], trackPoints: [] }
 
 const btnBase = "px-4 py-2 rounded-xl transition-all active:scale-95 disabled:opacity-50 disabled:active:scale-100"
 const btnPrimary = `${btnBase} bg-blue-600 text-white hover:bg-blue-700 shadow-sm`
@@ -548,8 +548,46 @@ const parseGpxStats = (gpxText, totalMass = 90) => {
       }
     }
 
+    const elevationProfile = []
+    const trackPoints = []
+    let currentDistanceM = 0
+    let loopAscentM = 0
+    let loopDescentM = 0
+
+    for (let i = 0; i < trkpts.length; i++) {
+      const point = trkpts[i]
+      let segmentMeters = 0
+      if (i > 0) {
+        segmentMeters = haversineMeters(trkpts[i - 1], point)
+        currentDistanceM += segmentMeters
+        if (Number.isFinite(trkpts[i - 1].ele) && Number.isFinite(point.ele)) {
+          const delta = point.ele - trkpts[i - 1].ele
+          if (delta > 0) loopAscentM += delta
+          if (delta < 0) loopDescentM += Math.abs(delta)
+        }
+      }
+      trackPoints.push({ distanceM: currentDistanceM, lon: point.lon, lat: point.lat })
+
+      if (Number.isFinite(point.ele)) {
+        if (i === 0) {
+          elevationProfile.push({ distanceM: 0, elevationM: point.ele, slopeDeg: 0, lon: point.lon, lat: point.lat })
+        } else {
+          const previous = trkpts[i - 1]
+          const slopeDeg = Number.isFinite(previous.ele) && segmentMeters > 0
+            ? Math.abs((Math.atan((point.ele - previous.ele) / segmentMeters) * 180) / Math.PI)
+            : 0
+          elevationProfile.push({ distanceM: currentDistanceM, elevationM: point.ele, slopeDeg, lon: point.lon, lat: point.lat })
+        }
+      }
+    }
+
+    if (!filteredAscendMatch && !plainAscendMatch) {
+      fAscentM = loopAscentM
+      fDescentM = loopDescentM
+    }
+
     return {
-      distanceKm: distanceMeters / 1000,
+      distanceKm: currentDistanceM / 1000,
       ascentM: fAscentM,
       descentM: fDescentM,
       travelTimeS,
@@ -557,26 +595,8 @@ const parseGpxStats = (gpxText, totalMass = 90) => {
       bears: Math.round(scaledEnergyJoules / 33500),
       rawSummary,
       waypoints,
-      elevationProfile: (() => {
-        const profile = []
-        let currentDistanceM = 0
-        for (let i = 0; i < trkpts.length; i++) {
-          const point = trkpts[i]
-          if (!Number.isFinite(point.ele)) continue
-          if (i === 0) {
-            profile.push({ distanceM: 0, elevationM: point.ele, slopeDeg: 0, lon: point.lon, lat: point.lat })
-          } else {
-            const previous = trkpts[i - 1]
-            const segmentMeters = haversineMeters(previous, point)
-            currentDistanceM += segmentMeters
-            const slopeDeg = Number.isFinite(previous.ele) && segmentMeters > 0
-              ? Math.abs((Math.atan((point.ele - previous.ele) / segmentMeters) * 180) / Math.PI)
-              : 0
-            profile.push({ distanceM: currentDistanceM, elevationM: point.ele, slopeDeg, lon: point.lon, lat: point.lat })
-          }
-        }
-        return profile
-      })(),
+      elevationProfile,
+      trackPoints,
     }
   } catch {
     return emptyRouteStats
@@ -749,7 +769,8 @@ export default function App() {
   const [showRouteDetails, setShowRouteDetails] = useState(true)
   const [routeStats, setRouteStats] = useState(() => plannerDraft?.routeStats?.elevationProfile ? plannerDraft.routeStats : emptyRouteStats)
   const [activeElevationPoint, setActiveElevationPoint] = useState(null)
-  const [isExternalRoute, setIsExternalRoute] = useState(false)
+  const [isExternalRoute, setIsExternalRoute] = useState(() => urlWaypoints ? false : (plannerDraft?.isExternalRoute ?? false))
+  const [lastRoutingKey, setLastRoutingKey] = useState(() => typeof plannerDraft?.lastRoutingKey === 'string' ? plannerDraft.lastRoutingKey : '')
   const [privacyMd, setPrivacyMd] = useState('')
   const [impressumMd, setImpressumMd] = useState('')
   const hasInitialFit = useRef(false)
@@ -822,6 +843,8 @@ export default function App() {
         title,
         routeStats,
         showRouteDetails,
+        isExternalRoute,
+        lastRoutingKey,
       }))
     } catch (e) {
       console.error('Failed to save planner_draft to localStorage', e)
@@ -833,13 +856,15 @@ export default function App() {
             activeProfile,
             title,
             showRouteDetails,
+            isExternalRoute,
+            lastRoutingKey,
           }))
         } catch (e2) {
           console.error('Even minimal draft failed to save', e2)
         }
       }
     }
-  }, [waypoints, activeProfile, latestGpx, routeGeoJson, title, routeStats, showRouteDetails])
+  }, [waypoints, activeProfile, latestGpx, routeGeoJson, title, routeStats, showRouteDetails, isExternalRoute, lastRoutingKey])
 
   useEffect(() => {
     if (urlWaypoints || urlProfile) {
@@ -976,7 +1001,16 @@ export default function App() {
   }, [map, activeElevationPoint])
 
   useEffect(() => {
-    if (waypoints.length < 2) { setLatestGpx(''); setRouteGeoJson(emptyRouteGeoJson); setRouteStats(emptyRouteStats); return }
+    if (waypoints.length < 2) {
+      setLatestGpx('')
+      setRouteGeoJson(emptyRouteGeoJson)
+      setRouteStats(emptyRouteStats)
+      setLastRoutingKey('')
+      return
+    }
+
+    const currentKey = `${activeProfile}:${brouterPoints}:${totalMass}`
+    if (currentKey === lastRoutingKey && latestGpx) return
     if (isExternalRoute) return
 
     const controller = new AbortController()
@@ -997,6 +1031,7 @@ export default function App() {
         setLatestGpx(text)
         setRouteGeoJson(parseGpxToGeoJson(text))
         setRouteStats(parseGpxStats(text, totalMass))
+        setLastRoutingKey(currentKey)
         setMessage(t.routeReady)
       })
       .catch((err) => {
@@ -1111,17 +1146,36 @@ export default function App() {
     const stats = parseGpxStats(route.gpx, totalMass)
     setRouteStats(stats)
 
+    let finalWaypoints = []
     const coords = geo.features[0]?.geometry?.coordinates ?? []
     if (stats.waypoints && stats.waypoints.length >= 2) {
-      setWaypoints(stats.waypoints)
+      finalWaypoints = stats.waypoints
+    } else if (stats.trackPoints && stats.trackPoints.length >= 2) {
+      const sampled = []
+      const stepM = 10000
+      let nextTargetM = stepM
+      sampled.push({ id: crypto.randomUUID(), label: 'Start', lon: stats.trackPoints[0].lon, lat: stats.trackPoints[0].lat })
+      for (let i = 1; i < stats.trackPoints.length - 1; i++) {
+        if (stats.trackPoints[i].distanceM >= nextTargetM) {
+          sampled.push({ id: crypto.randomUUID(), label: `Pin ${sampled.length + 1}`, lon: stats.trackPoints[i].lon, lat: stats.trackPoints[i].lat })
+          nextTargetM += stepM
+        }
+      }
+      const lastPoint = stats.trackPoints[stats.trackPoints.length - 1]
+      sampled.push({ id: crypto.randomUUID(), label: 'End', lon: lastPoint.lon, lat: lastPoint.lat })
+      finalWaypoints = sampled
     } else if (coords.length >= 2) {
       const start = coords[0]
       const end = coords[coords.length - 1]
-      setWaypoints([
+      finalWaypoints = [
         { id: crypto.randomUUID(), label: 'Start', lon: start[0], lat: start[1] },
         { id: crypto.randomUUID(), label: 'End', lon: end[0], lat: end[1] },
-      ])
+      ]
     }
+    setWaypoints(finalWaypoints)
+
+    const wpString = finalWaypoints.map((p) => `${p.lon},${p.lat}`).join('|')
+    setLastRoutingKey(`${activeProfile}:${wpString}:${totalMass}`)
 
     if (map && coords.length >= 2) {
       const bounds = new maplibregl.LngLatBounds()

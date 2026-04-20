@@ -627,6 +627,64 @@ const injectWaypointsToGpx = (gpx, waypoints) => {
   }
 }
 
+const mergeGpxSegments = (segments) => {
+  if (!segments || segments.length === 0) return ''
+  if (segments.length === 1) return segments[0]
+
+  let totalTrackLength = 0
+  let totalFilteredAscend = 0
+  let totalFilteredDescend = 0
+  let totalPlainAscend = 0
+  let totalPlainDescend = 0
+  let totalCost = 0
+  let totalEnergy = 0
+  let totalTime = 0
+
+  const allTrkpts = []
+
+  segments.forEach((gpx, idx) => {
+    const metaMatch = gpx.match(/<!--\s*([\s\S]*?)\s*-->/)
+    if (metaMatch) {
+      const metaStr = metaMatch[1]
+      totalTrackLength += parseFloat(metaStr.match(/track-length\s*=\s*([\d.]+)/)?.[1] || '0')
+      totalFilteredAscend += parseFloat(metaStr.match(/filtered ascend\s*=\s*([\d.]+)/)?.[1] || '0')
+      totalFilteredDescend += parseFloat(metaStr.match(/filtered descend\s*=\s*([\d.]+)/)?.[1] || '0')
+      totalPlainAscend += parseFloat(metaStr.match(/plain-ascend\s*=\s*([\d.]+)/)?.[1] || '0')
+      totalPlainDescend += parseFloat(metaStr.match(/plain-descend\s*=\s*([\d.]+)/)?.[1] || '0')
+      totalCost += parseFloat(metaStr.match(/cost\s*=\s*([\d.]+)/)?.[1] || '0')
+      totalEnergy += parseFloat(metaStr.match(/energy\s*=\s*([\d.]+)/)?.[1] || '0')
+      // Extract time: handle both seconds and formatted time (even with spaces)
+      // until next key or end of comment
+      const timeMatch = metaStr.match(/time\s*=\s*([\d.hms :]+?)(?=\s*[a-z-]+\s*=|-->|$)/i)
+      if (timeMatch) {
+        totalTime += parseDuration(timeMatch[1].trim())
+      }
+    }
+
+    const trkptRegex = /<trkpt\s+[^>]+>(?:[\s\S]*?<\/trkpt>)?/g
+    let match
+    let count = 0
+    while ((match = trkptRegex.exec(gpx)) !== null) {
+      if (idx > 0 && count === 0) {
+        count++
+        continue
+      }
+      allTrkpts.push(match[0])
+      count++
+    }
+  })
+
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<!-- track-length = ${totalTrackLength.toFixed(0)} filtered ascend = ${totalFilteredAscend.toFixed(0)} filtered descend = ${totalFilteredDescend.toFixed(0)} plain-ascend = ${totalPlainAscend.toFixed(0)} plain-descend = ${totalPlainDescend.toFixed(0)} cost=${totalCost.toFixed(0)} energy=${totalEnergy.toFixed(3)}kwh time=${totalTime}s -->
+<gpx creator="BRouter" version="1.1">
+ <trk>
+  <trkseg>
+   ${allTrkpts.join('\n   ')}
+  </trkseg>
+ </trk>
+</gpx>`
+}
+
 const parseGpxToGeoJson = (gpxText) => {
   if (!gpxText) return emptyRouteGeoJson
   try {
@@ -782,6 +840,7 @@ export default function App() {
   const showToiletsRef = useRef(showToilets)
   const mapRef = useRef(null)
   const mapMarkers = useRef([])
+  const segmentCache = useRef({})
 
   const t = TEXT[lang]
 
@@ -1025,16 +1084,37 @@ export default function App() {
 
     setRoutingError('')
     setIsRouting(true)
-    fetchBrouterRoute({
-      profile: activeProfile,
-      points: brouterPoints,
-      signal: controller.signal,
-      totalMass,
+
+    const segmentsToFetch = []
+    for (let i = 0; i < waypoints.length - 1; i++) {
+      const p1 = waypoints[i]
+      const p2 = waypoints[i + 1]
+      const segmentPoints = `${p1.lon},${p1.lat}|${p2.lon},${p2.lat}`
+      const segmentKey = `${activeProfile}:${segmentPoints}:${totalMass}`
+      segmentsToFetch.push({ key: segmentKey, points: segmentPoints })
+    }
+
+    const fetchPromises = segmentsToFetch.map((seg) => {
+      if (segmentCache.current[seg.key]) {
+        return Promise.resolve(segmentCache.current[seg.key])
+      }
+      return fetchBrouterRoute({
+        profile: activeProfile,
+        points: seg.points,
+        signal: controller.signal,
+        totalMass,
+      }).then((text) => {
+        segmentCache.current[seg.key] = text
+        return text
+      })
     })
-      .then((text) => {
-        setLatestGpx(text)
-        setRouteGeoJson(parseGpxToGeoJson(text))
-        setRouteStats(parseGpxStats(text, totalMass))
+
+    Promise.all(fetchPromises)
+      .then((results) => {
+        const mergedGpx = mergeGpxSegments(results)
+        setLatestGpx(mergedGpx)
+        setRouteGeoJson(parseGpxToGeoJson(mergedGpx))
+        setRouteStats(parseGpxStats(mergedGpx, totalMass))
         setLastRoutingKey(currentKey)
         setMessage(t.routeReady)
       })
@@ -1052,6 +1132,7 @@ export default function App() {
         clearTimeout(timeoutId)
         setIsRouting(false)
       })
+
     return () => {
       controller.abort()
       clearTimeout(timeoutId)

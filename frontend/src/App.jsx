@@ -184,6 +184,7 @@ const TEXT = {
     profile_trekking_noferries: 'Bike (no ferries)',
     profile_fastbike: 'Road bike',
     profile_liegerad: 'Recumbent',
+    routingOngoing: 'Calculating route...',
   },
   de: {
     appTitle: 'Bicly', appSub: 'Fahrradfreundliche Routenplanung mit lokaler GPX-Bibliothek.', planner: 'Planer', library: 'Bibliothek',
@@ -225,6 +226,7 @@ const TEXT = {
     totalMass: 'Gesamtgewicht (Rad + Fahrer)',
     showDrinkingWater: 'Trinkwasser anzeigen',
     showToilets: 'Toiletten anzeigen',
+    routingOngoing: 'Route wird berechnet...',
   },
 }
 
@@ -752,6 +754,7 @@ export default function App() {
   const [profiles, setProfiles] = useState([])
   const [activeProfile, setActiveProfile] = useState(() => urlProfile || (typeof plannerDraft?.activeProfile === 'string' ? plannerDraft.activeProfile : 'trekking'))
   const [latestGpx, setLatestGpx] = useState(() => typeof plannerDraft?.latestGpx === 'string' ? plannerDraft.latestGpx : '')
+  const [isRouting, setIsRouting] = useState(false)
   const [routeGeoJson, setRouteGeoJson] = useState(() => plannerDraft?.routeGeoJson?.type === 'FeatureCollection' ? plannerDraft.routeGeoJson : emptyRouteGeoJson)
   const [title, setTitle] = useState(() => typeof plannerDraft?.title === 'string' ? plannerDraft.title : 'New Route')
   const [uploadTitle, setUploadTitle] = useState('')
@@ -1021,6 +1024,7 @@ export default function App() {
     }, 180000)
 
     setRoutingError('')
+    setIsRouting(true)
     fetchBrouterRoute({
       profile: activeProfile,
       points: brouterPoints,
@@ -1044,7 +1048,10 @@ export default function App() {
           setMessage(t.unknownError)
         }
       })
-      .finally(() => clearTimeout(timeoutId))
+      .finally(() => {
+        clearTimeout(timeoutId)
+        setIsRouting(false)
+      })
     return () => {
       controller.abort()
       clearTimeout(timeoutId)
@@ -1243,17 +1250,25 @@ export default function App() {
             )}
           </div>
         </header>
-        {message && (
+        {(isRouting || message) && (
           <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[1000] flex items-center gap-3 pl-4 pr-2 py-2 bg-slate-800/90 text-white text-sm font-medium rounded-full shadow-lg backdrop-blur-sm animate-in fade-in slide-in-from-bottom-4 duration-300">
-            <span>{message}</span>
-            <button
-              type="button"
-              className="w-6 h-6 flex items-center justify-center rounded-full hover:bg-white/20 transition-colors"
-              onClick={() => setMessage('')}
-              aria-label="Dismiss"
-            >
-              ✕
-            </button>
+            {isRouting && (
+              <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            )}
+            <span>{isRouting ? t.routingOngoing : message}</span>
+            {!isRouting && (
+              <button
+                type="button"
+                className="w-6 h-6 flex items-center justify-center rounded-full hover:bg-white/20 transition-colors"
+                onClick={() => setMessage('')}
+                aria-label="Dismiss"
+              >
+                ✕
+              </button>
+            )}
           </div>
         )}
 
@@ -1298,7 +1313,17 @@ export default function App() {
               <ElevationChart profile={routeStats.elevationProfile} title={t.elevationProfile} legend={t.steepLegend} hoverHint={t.elevationFocusHint} activeDistanceM={activeElevationPoint?.distanceM} onHoverPoint={setActiveElevationPoint} onLeave={() => setActiveElevationPoint(null)} t={t} isDarkMode={isDarkMode} />
             </section>
           )}
-            {showRouteDetails && !latestGpx && <p className="p-4 text-sm text-slate-500 italic">{t.routeDetailsUnavailable}</p>}
+            {showRouteDetails && !latestGpx && (
+              <div className="p-4 flex items-center gap-2 text-sm text-slate-500 italic">
+                {isRouting && (
+                  <svg className="animate-spin h-4 w-4 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                )}
+                <span>{isRouting ? t.routingOngoing : t.routeDetailsUnavailable}</span>
+              </div>
+            )}
           </section>
         </section>
         <aside className={`fixed top-14 left-0 right-0 bottom-0 z-[280] bg-white dark:bg-slate-800 flex flex-col p-4 overflow-y-auto transition-all duration-300 ${plannerPanelOpen ? 'translate-y-0 opacity-100' : '-translate-y-full opacity-0 pointer-events-none'} md:static md:translate-y-0 md:opacity-100 md:pointer-events-auto md:w-96 md:border-l md:border-slate-200 md:dark:border-slate-700 ${plannerPanelOpen ? '' : 'md:mr-[-384px]'}`}>

@@ -1,7 +1,6 @@
-Bicly demo application.
-
-Responsible for content: Bicly Project Team.
-
-Contact: hello@bicly.local
-
-Address: Example Street 1, 12345 Demo City
+<h2>Imprint</h2>
+<p><strong>[FirstName LastName]</strong><br>
+[Street NN]<br>
+[NNNN Place]<br>
+Country</p>
+<p><strong>Contact:</strong> <a href="mailto:e-mail@adress.com">e-mail@adress.com</a></p>

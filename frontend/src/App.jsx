@@ -935,8 +935,30 @@ export default function App() {
   }, [urlWaypoints, urlProfile])
 
   useEffect(() => {
-    fetch('/privacy.md').then(r => r.text()).then(setPrivacyMd).catch(console.error)
-    fetch('/impressum.md').then(r => r.text()).then(setImpressumMd).catch(console.error)
+    const loadMarkdown = async (paths, setter) => {
+      for (const path of paths) {
+        try {
+          const res = await fetch(path)
+          if (res.ok) {
+            const contentType = res.headers.get('content-type')
+            if (contentType && contentType.includes('text/html')) {
+              continue // Likely SPA fallback to index.html
+            }
+            const text = await res.text()
+            if (text.trim().startsWith('<!DOCTYPE')) {
+              continue // Definitely SPA fallback
+            }
+            setter(text)
+            return
+          }
+        } catch (e) {
+          console.error(`Failed to load ${path}:`, e)
+        }
+      }
+    }
+
+    loadMarkdown(['/privacy.md', '/policy.md'], setPrivacyMd)
+    loadMarkdown(['/impressum.md', '/imprint.md'], setImpressumMd)
   }, [])
 
 

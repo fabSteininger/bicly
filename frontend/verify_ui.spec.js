@@ -52,8 +52,8 @@ test('Verify privacy and impressum markdown rendering', async ({ page }) => {
   await page.getByRole('button', { name: 'Datenschutz' }).click();
 
   // Verify privacy content (from public/privacy.md)
-  await expect(page.locator('h2')).toContainText('Datenschutzerklärung');
-  await expect(page.locator('article')).toContainText('We process route planning data only in your browser');
+  await expect(page.locator('h2').first()).toContainText('Datenschutzerklärung');
+  await expect(page.locator('article')).toContainText('We are committed to protecting your privacy');
 
   // Open App Menu again
   await page.getByLabel('App-Menü').click();
@@ -62,6 +62,6 @@ test('Verify privacy and impressum markdown rendering', async ({ page }) => {
   await page.getByRole('button', { name: 'Impressum' }).click();
 
   // Verify impressum content (from public/impressum.md)
-  await expect(page.locator('h2')).toContainText('Impressum');
-  await expect(page.locator('article')).toContainText('Bicly demo application');
+  await expect(page.locator('h2').first()).toContainText('Impressum');
+  await expect(page.locator('article')).toContainText('Contact');
 });

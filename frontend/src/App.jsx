@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import {
@@ -1521,7 +1522,7 @@ export default function App() {
         <div className="p-8 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-3xl shadow-sm flex flex-col gap-4">
           <h2 className="text-3xl font-bold mb-4">{t.privacyHeading}</h2>
           <article className="prose dark:prose-invert max-w-none">
-            <ReactMarkdown>{privacyMd}</ReactMarkdown>
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>{privacyMd}</ReactMarkdown>
           </article>
         </div>
       </section>}
@@ -1558,7 +1559,7 @@ export default function App() {
         <div className="p-8 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-3xl shadow-sm flex flex-col gap-4">
           <h2 className="text-3xl font-bold mb-4">{t.impressumHeading}</h2>
           <article className="prose dark:prose-invert max-w-none">
-            <ReactMarkdown>{impressumMd}</ReactMarkdown>
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>{impressumMd}</ReactMarkdown>
           </article>
         </div>
       </section>}

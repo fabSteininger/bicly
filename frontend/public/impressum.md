@@ -1,5 +1,3 @@
-# Imprint
-
 **[FirstName LastName]**
 [Street NN]
 [NNNN Place]

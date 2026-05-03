@@ -64,7 +64,7 @@ Bicly can be started together with a local BRouter instance using Docker Compose
 You can customize the Privacy Policy and Impressum in the Docker container in two ways:
 
 - **Environment Variables:** Set `PRIVACY_MD` and `IMPRESSUM_MD` in `docker-compose.yml`.
-- **Volume Mounts:** Uncomment the `volumes` section in `docker-compose.yml` and provide your own `privacy.md` and `impressum.md` files in the root directory.
+- **Volume Mounts:** Provide your own `privacy.md` and `impressum.md` files in the `./privacy` directory, which is mounted to the container in `docker-compose.yml`.
 
 ## Static Hosting
 

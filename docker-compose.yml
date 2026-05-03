@@ -4,8 +4,7 @@ services:
   bicly:
     image: ghcr.io/fabsteininger/bicly:main
     volumes:
-      - ./privacy/privacy.md:/usr/share/nginx/html/privacy.md
-      - ./privacy/impressum.md:/usr/share/nginx/html/impressum.md
+      - ./privacy:/usr/share/nginx/html/privacy:ro
       - brouter_logs:/var/log/brouter
     ports:
       - "80:80"

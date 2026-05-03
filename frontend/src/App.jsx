@@ -184,6 +184,8 @@ const TEXT = {
     profile_trekking: 'Bike',
     profile_trekking_noferries: 'Bike (no ferries)',
     profile_fastbike: 'Road bike',
+    profile_gravel: 'Gravel',
+    profile_mtb: 'Mountain bike',
     profile_liegerad: 'Recumbent',
     routingOngoing: 'Calculating route...',
   },
@@ -192,6 +194,8 @@ const TEXT = {
     profile_trekking: 'Rad',
     profile_trekking_noferries: 'Rad ohne Fähren',
     profile_fastbike: 'Rennrad',
+    profile_gravel: 'Gravel',
+    profile_mtb: 'Mountainbike',
     profile_liegerad: 'Liegerad',
     language: 'Sprache', profile: 'Routing-Profil', title: 'Routentitel', clearPins: 'Route Löschen',
     confirmClear: 'Bist du sicher, dass du die aktuelle Route löschen möchtest?',
@@ -1441,6 +1445,8 @@ export default function App() {
                   {p.id === 'trekking' ? t.profile_trekking :
                    p.id === 'trekking-noferries' ? t.profile_trekking_noferries :
                    p.id === 'fastbike' ? t.profile_fastbike :
+                   p.id === 'gravel' ? t.profile_gravel :
+                   p.id === 'mtb' ? t.profile_mtb :
                    p.id === 'vm-forum-liegerad-schnell' ? t.profile_liegerad :
                    p.name}
                 </option>

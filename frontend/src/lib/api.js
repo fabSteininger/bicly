@@ -36,6 +36,8 @@ export const ROUTING_PROFILES = [
   { id: 'trekking', name: 'trekking' },
   { id: 'trekking-noferries', name: 'trekking-noferries' },
   { id: 'fastbike', name: 'fastbike' },
+  { id: 'gravel', name: 'gravel' },
+  { id: 'mtb', name: 'mtb' },
   { id: 'vm-forum-liegerad-schnell', name: 'vm-forum-liegerad-schnell' },
 ]
 

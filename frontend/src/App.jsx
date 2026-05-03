@@ -644,22 +644,19 @@ const mergeGpxSegments = (segments) => {
   const allTrkpts = []
 
   segments.forEach((gpx, idx) => {
+    const stats = parseGpxStats(gpx, 90)
+    totalFilteredAscend += stats.ascentM
+    totalFilteredDescend += stats.descentM
+    totalTime += stats.travelTimeS
+    totalEnergy += stats.energyJoules / 3600000
+
     const metaMatch = gpx.match(/<!--\s*([\s\S]*?)\s*-->/)
     if (metaMatch) {
       const metaStr = metaMatch[1]
       totalTrackLength += parseFloat(metaStr.match(/track-length\s*=\s*([\d.]+)/)?.[1] || '0')
-      totalFilteredAscend += parseFloat(metaStr.match(/filtered ascend\s*=\s*([\d.]+)/)?.[1] || '0')
-      totalFilteredDescend += parseFloat(metaStr.match(/filtered descend\s*=\s*([\d.]+)/)?.[1] || '0')
-      totalPlainAscend += parseFloat(metaStr.match(/plain-ascend\s*=\s*([\d.]+)/)?.[1] || '0')
-      totalPlainDescend += parseFloat(metaStr.match(/plain-descend\s*=\s*([\d.]+)/)?.[1] || '0')
       totalCost += parseFloat(metaStr.match(/cost\s*=\s*([\d.]+)/)?.[1] || '0')
-      totalEnergy += parseFloat(metaStr.match(/energy\s*=\s*([\d.]+)/)?.[1] || '0')
-      // Extract time: handle both seconds and formatted time (even with spaces)
-      // until next key or end of comment
-      const timeMatch = metaStr.match(/time\s*=\s*([\d.hms :]+?)(?=\s*[a-z-]+\s*=|-->|$)/i)
-      if (timeMatch) {
-        totalTime += parseDuration(timeMatch[1].trim())
-      }
+      totalPlainAscend += parseFloat(metaStr.match(/plain-ascend\s*=\s*(-?[\d.]+)/)?.[1] || '0')
+      totalPlainDescend += parseFloat(metaStr.match(/plain-descend\s*=\s*(-?[\d.]+)/)?.[1] || '0')
     }
 
     const trkptRegex = /<trkpt\s+[^>]+>(?:[\s\S]*?<\/trkpt>)?/g

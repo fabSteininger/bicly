@@ -959,8 +959,8 @@ export default function App() {
       }
     }
 
-    loadMarkdown(['/privacy.md', '/policy.md'], setPrivacyMd)
-    loadMarkdown(['/impressum.md', '/imprint.md'], setImpressumMd)
+    loadMarkdown(['/privacy/privacy.md', '/privacy.md', '/policy.md'], setPrivacyMd)
+    loadMarkdown(['/privacy/impressum.md', '/impressum.md', '/imprint.md'], setImpressumMd)
   }, [])
 
 

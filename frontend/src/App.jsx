@@ -1160,16 +1160,13 @@ export default function App() {
           setMessage(t.routingTimeout)
         } else {
           const rawMsg = err.message || t.unknownError
-          const cleanMsg = rawMsg.replace(/[<>]/g, '').slice(0, 500).trim()
-          setRoutingError(cleanMsg)
+          setRoutingError(rawMsg.slice(0, 500))
 
-          if (err.status === 400 || (cleanMsg.toLowerCase().includes('datafile') && cleanMsg.toLowerCase().includes('not found'))) {
-            const datafileMatch = cleanMsg.match(/datafile\s+([^\s]+)\s+not found/i)
-            if (datafileMatch) {
-              setMessage(t.regionUnavailable.replace('{region}', datafileMatch[1]))
-            } else {
-              setMessage(cleanMsg)
-            }
+          const datafileMatch = rawMsg.match(/datafile\s+([^\s<]+)\s+not found/i)
+          if (datafileMatch) {
+            setMessage(t.regionUnavailable.replace('{region}', datafileMatch[1]))
+          } else if (err.status === 400 && !rawMsg.includes('<')) {
+            setMessage(rawMsg.slice(0, 500))
           } else {
             setMessage(t.unknownError)
           }

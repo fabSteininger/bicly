@@ -188,6 +188,7 @@ const TEXT = {
     profile_mtb: 'Mountain bike',
     profile_liegerad: 'Recumbent',
     routingOngoing: 'Calculating route...',
+    regionUnavailable: 'Region {region} is not available on the server.',
   },
   de: {
     appTitle: 'Bicly', appSub: 'Fahrradfreundliche Routenplanung mit lokaler GPX-Bibliothek.', planner: 'Planer', library: 'Bibliothek',
@@ -232,6 +233,7 @@ const TEXT = {
     showDrinkingWater: 'Trinkwasser anzeigen',
     showToilets: 'Toiletten anzeigen',
     routingOngoing: 'Route wird berechnet...',
+    regionUnavailable: 'Region {region} ist auf dem Server nicht verfügbar.',
   },
 }
 
@@ -1157,8 +1159,20 @@ export default function App() {
         } else if (err.status === 524 || err.status === 504) {
           setMessage(t.routingTimeout)
         } else {
-          setRoutingError(err.message.slice(0, 500))
-          setMessage(t.unknownError)
+          const rawMsg = err.message || t.unknownError
+          const cleanMsg = rawMsg.replace(/[<>]/g, '').slice(0, 500).trim()
+          setRoutingError(cleanMsg)
+
+          if (err.status === 400 || (cleanMsg.toLowerCase().includes('datafile') && cleanMsg.toLowerCase().includes('not found'))) {
+            const datafileMatch = cleanMsg.match(/datafile\s+([^\s]+)\s+not found/i)
+            if (datafileMatch) {
+              setMessage(t.regionUnavailable.replace('{region}', datafileMatch[1]))
+            } else {
+              setMessage(cleanMsg)
+            }
+          } else {
+            setMessage(t.unknownError)
+          }
         }
       })
       .finally(() => {

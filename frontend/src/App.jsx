@@ -1160,7 +1160,7 @@ export default function App() {
           setMessage(t.routingTimeout)
         } else {
           const rawMsg = err.message || t.unknownError
-          const cleanMsg = rawMsg.replace(/<[^>]*>/g, '').slice(0, 500).trim()
+          const cleanMsg = rawMsg.replace(/[<>]/g, '').slice(0, 500).trim()
           setRoutingError(cleanMsg)
 
           if (err.status === 400 || (cleanMsg.toLowerCase().includes('datafile') && cleanMsg.toLowerCase().includes('not found'))) {

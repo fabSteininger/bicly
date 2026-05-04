@@ -1157,10 +1157,12 @@ export default function App() {
         } else if (err.status === 524 || err.status === 504) {
           setMessage(t.routingTimeout)
         } else {
-          const errMsg = err.message.slice(0, 500)
-          setRoutingError(errMsg)
-          if (errMsg.toLowerCase().includes('datafile') && errMsg.toLowerCase().includes('not found')) {
-            setMessage(errMsg)
+          const rawMsg = err.message || t.unknownError
+          const cleanMsg = rawMsg.replace(/<[^>]*>/g, '').slice(0, 500).trim()
+          setRoutingError(cleanMsg)
+
+          if (err.status === 400 || (cleanMsg.toLowerCase().includes('datafile') && cleanMsg.toLowerCase().includes('not found'))) {
+            setMessage(cleanMsg)
           } else {
             setMessage(t.unknownError)
           }

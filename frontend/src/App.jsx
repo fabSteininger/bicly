@@ -168,7 +168,7 @@ const TEXT = {
     settings: 'Settings', settingsHeading: 'App settings',
     generalSettings: 'General settings',
     distance: 'Distance', ascent: 'Ascent', descent: 'Descent',
-    elevationProfile: 'Elevation profile', steepLegend: 'Steepness (10°+ = red)',
+    elevationProfile: 'Elevation profile', steepLegend: 'Steepness (10%+ = red)',
     openRouteDetailsSheet: 'Open route details', closeRouteDetailsSheet: 'Close route details',
     routeDetailsUnavailable: 'Generate a route to see distance and elevation details.',
     elevationFocusHint: 'Hover (desktop) or drag (touch) to highlight the matching map position.',
@@ -218,7 +218,7 @@ const TEXT = {
     settings: 'Einstellungen', settingsHeading: 'App-Einstellungen',
     generalSettings: 'Allgemeine Einstellungen',
     distance: 'Distanz', ascent: 'Anstieg', descent: 'Abstieg',
-    elevationProfile: 'Höhenprofil', steepLegend: 'Steigung (ab 10° = rot)',
+    elevationProfile: 'Höhenprofil', steepLegend: 'Steigung (ab 10% = rot)',
     openRouteDetailsSheet: 'Routendetails öffnen', closeRouteDetailsSheet: 'Routendetails schließen',
     routeDetailsUnavailable: 'Erzeuge eine Route, um Distanz- und Höhendetails zu sehen.',
     elevationFocusHint: 'Fahre mit der Maus darüber (Desktop) oder ziehe mit dem Finger, um die Kartenposition zu markieren.',
@@ -270,14 +270,14 @@ const ElevationChart = ({ profile, title, legend, hoverHint, activeDistanceM, on
         borderColor: (ctx) => {
           const point = displayProfile[ctx.p1DataIndex]
           if (!point) return '#1f6feb'
-          return point.slopeDeg >= 10 ? '#e22b2b' : point.slopeDeg >= 6 ? '#ef8f2e' : '#1f6feb'
+          return point.slopePct >= 10 ? '#e22b2b' : point.slopePct >= 6 ? '#ef8f2e' : '#1f6feb'
         },
         backgroundColor: (ctx) => {
           const point = displayProfile[ctx.p1DataIndex]
           const base = isDarkMode ? 'rgba(30, 111, 235, 0.2)' : 'rgba(168, 200, 255, 0.4)'
           if (!point) return base
-          if (point.slopeDeg >= 10) return isDarkMode ? 'rgba(226, 43, 43, 0.2)' : 'rgba(226, 43, 43, 0.4)'
-          if (point.slopeDeg >= 6) return isDarkMode ? 'rgba(239, 143, 46, 0.2)' : 'rgba(239, 143, 46, 0.4)'
+          if (point.slopePct >= 10) return isDarkMode ? 'rgba(226, 43, 43, 0.2)' : 'rgba(226, 43, 43, 0.4)'
+          if (point.slopePct >= 6) return isDarkMode ? 'rgba(239, 143, 46, 0.2)' : 'rgba(239, 143, 46, 0.4)'
           return base
         },
       },
@@ -298,8 +298,8 @@ const ElevationChart = ({ profile, title, legend, hoverHint, activeDistanceM, on
           label: (item) => {
             const point = displayProfile[item.dataIndex]
             const lines = [`${Math.round(item.parsed.y)} m`]
-            if (point && Number.isFinite(point.slopeDeg)) {
-              lines.push(`Gradient: ${Math.round(point.slopeDeg)}°`)
+            if (point && Number.isFinite(point.slopePct)) {
+              lines.push(`Gradient: ${Math.round(point.slopePct)}%`)
             }
             return lines
           },
@@ -577,13 +577,13 @@ const parseGpxStats = (gpxText, totalMass = 90) => {
 
       if (Number.isFinite(point.ele)) {
         if (i === 0) {
-          elevationProfile.push({ distanceM: 0, elevationM: point.ele, slopeDeg: 0, lon: point.lon, lat: point.lat })
+          elevationProfile.push({ distanceM: 0, elevationM: point.ele, slopePct: 0, lon: point.lon, lat: point.lat })
         } else {
           const previous = trkpts[i - 1]
-          const slopeDeg = Number.isFinite(previous.ele) && segmentMeters > 0
-            ? Math.abs((Math.atan((point.ele - previous.ele) / segmentMeters) * 180) / Math.PI)
+          const slopePct = Number.isFinite(previous.ele) && segmentMeters > 0
+            ? Math.abs(((point.ele - previous.ele) / segmentMeters) * 100)
             : 0
-          elevationProfile.push({ distanceM: currentDistanceM, elevationM: point.ele, slopeDeg, lon: point.lon, lat: point.lat })
+          elevationProfile.push({ distanceM: currentDistanceM, elevationM: point.ele, slopePct, lon: point.lon, lat: point.lat })
         }
       }
     }

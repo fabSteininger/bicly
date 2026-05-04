@@ -270,14 +270,16 @@ const ElevationChart = ({ profile, title, legend, hoverHint, activeDistanceM, on
         borderColor: (ctx) => {
           const point = displayProfile[ctx.p1DataIndex]
           if (!point) return '#1f6feb'
-          return point.slopePct >= 10 ? '#e22b2b' : point.slopePct >= 6 ? '#ef8f2e' : '#1f6feb'
+          const absSlope = Math.abs(point.slopePct)
+          return absSlope >= 10 ? '#e22b2b' : absSlope >= 6 ? '#ef8f2e' : '#1f6feb'
         },
         backgroundColor: (ctx) => {
           const point = displayProfile[ctx.p1DataIndex]
           const base = isDarkMode ? 'rgba(30, 111, 235, 0.2)' : 'rgba(168, 200, 255, 0.4)'
           if (!point) return base
-          if (point.slopePct >= 10) return isDarkMode ? 'rgba(226, 43, 43, 0.2)' : 'rgba(226, 43, 43, 0.4)'
-          if (point.slopePct >= 6) return isDarkMode ? 'rgba(239, 143, 46, 0.2)' : 'rgba(239, 143, 46, 0.4)'
+          const absSlope = Math.abs(point.slopePct)
+          if (absSlope >= 10) return isDarkMode ? 'rgba(226, 43, 43, 0.2)' : 'rgba(226, 43, 43, 0.4)'
+          if (absSlope >= 6) return isDarkMode ? 'rgba(239, 143, 46, 0.2)' : 'rgba(239, 143, 46, 0.4)'
           return base
         },
       },
@@ -581,7 +583,7 @@ const parseGpxStats = (gpxText, totalMass = 90) => {
         } else {
           const previous = trkpts[i - 1]
           const slopePct = Number.isFinite(previous.ele) && segmentMeters > 0
-            ? Math.abs(((point.ele - previous.ele) / segmentMeters) * 100)
+            ? ((point.ele - previous.ele) / segmentMeters) * 100
             : 0
           elevationProfile.push({ distanceM: currentDistanceM, elevationM: point.ele, slopePct, lon: point.lon, lat: point.lat })
         }

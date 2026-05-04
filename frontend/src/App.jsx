@@ -1157,8 +1157,13 @@ export default function App() {
         } else if (err.status === 524 || err.status === 504) {
           setMessage(t.routingTimeout)
         } else {
-          setRoutingError(err.message.slice(0, 500))
-          setMessage(t.unknownError)
+          const errMsg = err.message.slice(0, 500)
+          setRoutingError(errMsg)
+          if (errMsg.toLowerCase().includes('datafile') && errMsg.toLowerCase().includes('not found')) {
+            setMessage(errMsg)
+          } else {
+            setMessage(t.unknownError)
+          }
         }
       })
       .finally(() => {

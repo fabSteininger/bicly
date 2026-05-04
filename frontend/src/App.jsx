@@ -1087,11 +1087,16 @@ export default function App() {
   }, [map, activeElevationPoint])
 
   useEffect(() => {
+    let ignore = false
     if (waypoints.length < 2) {
       setLatestGpx('')
       setRouteGeoJson(emptyRouteGeoJson)
       setRouteStats(emptyRouteStats)
       setLastRoutingKey('')
+      setIsRouting(false)
+      setRoutingError('')
+      setActiveElevationPoint(null)
+      if (message === t.routeReady) setMessage('')
       return
     }
 
@@ -1135,6 +1140,7 @@ export default function App() {
 
     Promise.all(fetchPromises)
       .then((results) => {
+        if (ignore) return
         const mergedGpx = mergeGpxSegments(results)
         setLatestGpx(mergedGpx)
         setRouteGeoJson(parseGpxToGeoJson(mergedGpx))
@@ -1143,6 +1149,7 @@ export default function App() {
         setMessage(t.routeReady)
       })
       .catch((err) => {
+        if (ignore) return
         if (err.name === 'AbortError') {
           if (timedOut) setMessage(t.routingTimeout)
         } else if (err.status === 524 || err.status === 504) {
@@ -1154,10 +1161,13 @@ export default function App() {
       })
       .finally(() => {
         clearTimeout(timeoutId)
-        setIsRouting(false)
+        if (!ignore) {
+          setIsRouting(false)
+        }
       })
 
     return () => {
+      ignore = true
       controller.abort()
       clearTimeout(timeoutId)
     }

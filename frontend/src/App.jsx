@@ -1092,6 +1092,8 @@ export default function App() {
 
   useEffect(() => {
     let ignore = false
+    const controller = new AbortController()
+
     if (waypoints.length < 2) {
       setLatestGpx('')
       setRouteGeoJson(emptyRouteGeoJson)
@@ -1108,42 +1110,39 @@ export default function App() {
     if (currentKey === lastRoutingKey && latestGpx) return
     if (isExternalRoute) return
 
-    const controller = new AbortController()
-    let timedOut = false
-    const timeoutId = setTimeout(() => {
-      timedOut = true
-      controller.abort()
-    }, 180000)
+    const debounceId = setTimeout(async () => {
+      let timedOut = false
+      const timeoutId = setTimeout(() => {
+        timedOut = true
+        controller.abort()
+      }, 180000)
 
-    setRoutingError('')
-    setIsRouting(true)
+      setRoutingError('')
+      setIsRouting(true)
 
-    const segmentsToFetch = []
-    for (let i = 0; i < waypoints.length - 1; i++) {
-      const p1 = waypoints[i]
-      const p2 = waypoints[i + 1]
-      const segmentPoints = `${p1.lon},${p1.lat}|${p2.lon},${p2.lat}`
-      const segmentKey = `${activeProfile}:${segmentPoints}:${totalMass}`
-      segmentsToFetch.push({ key: segmentKey, points: segmentPoints })
-    }
+      try {
+        const results = []
+        for (let i = 0; i < waypoints.length - 1; i++) {
+          if (ignore) return
+          const p1 = waypoints[i]
+          const p2 = waypoints[i + 1]
+          const segmentPoints = `${p1.lon},${p1.lat}|${p2.lon},${p2.lat}`
+          const segmentKey = `${activeProfile}:${segmentPoints}:${totalMass}`
 
-    const fetchPromises = segmentsToFetch.map((seg) => {
-      if (segmentCache.current[seg.key]) {
-        return Promise.resolve(segmentCache.current[seg.key])
-      }
-      return fetchBrouterRoute({
-        profile: activeProfile,
-        points: seg.points,
-        signal: controller.signal,
-        totalMass,
-      }).then((text) => {
-        segmentCache.current[seg.key] = text
-        return text
-      })
-    })
+          if (segmentCache.current[segmentKey]) {
+            results.push(segmentCache.current[segmentKey])
+          } else {
+            const text = await fetchBrouterRoute({
+              profile: activeProfile,
+              points: segmentPoints,
+              signal: controller.signal,
+              totalMass,
+            })
+            segmentCache.current[segmentKey] = text
+            results.push(text)
+          }
+        }
 
-    Promise.all(fetchPromises)
-      .then((results) => {
         if (ignore) return
         const mergedGpx = mergeGpxSegments(results)
         setLatestGpx(mergedGpx)
@@ -1151,8 +1150,7 @@ export default function App() {
         setRouteStats(parseGpxStats(mergedGpx, totalMass))
         setLastRoutingKey(currentKey)
         setMessage(t.routeReady)
-      })
-      .catch((err) => {
+      } catch (err) {
         if (ignore) return
         if (err.name === 'AbortError') {
           if (timedOut) setMessage(t.routingTimeout)
@@ -1171,18 +1169,18 @@ export default function App() {
             setMessage(t.unknownError)
           }
         }
-      })
-      .finally(() => {
+      } finally {
         clearTimeout(timeoutId)
         if (!ignore) {
           setIsRouting(false)
         }
-      })
+      }
+    }, 200)
 
     return () => {
       ignore = true
       controller.abort()
-      clearTimeout(timeoutId)
+      clearTimeout(debounceId)
     }
   }, [activeProfile, brouterPoints, waypoints.length, isExternalRoute, totalMass])
 
